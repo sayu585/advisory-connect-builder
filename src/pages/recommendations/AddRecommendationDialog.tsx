@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -37,17 +36,22 @@ interface Target {
 }
 
 interface AddRecommendationDialogProps {
-  onAddRecommendation: (recommendation: {
-    title?: string;
-    type?: string;
-    description?: string;
-    targets?: { price?: string; timeframe?: string; }[];
-    clientsAssigned?: string[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (recommendation: {
+    title: string;
+    type: string;
+    description: string;
+    targets: { price: string; timeframe: string; }[];
+    clientsAssigned: string[];
   }) => void;
 }
 
-const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAddRecommendation }) => {
-  const [open, setOpen] = useState(false);
+const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ 
+  open, 
+  onOpenChange, 
+  onSubmit 
+}) => {
   const [title, setTitle] = useState("");
   const [type, setType] = useState("");
   const [description, setDescription] = useState("");
@@ -87,7 +91,7 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAdd
       timeframe: target.timeframe
     }));
 
-    onAddRecommendation({
+    onSubmit({
       title,
       type,
       description,
@@ -101,17 +105,11 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAdd
     setDescription("");
     setTargets([{ id: uuidv4(), price: "", timeframe: "" }]);
     setClientsAssigned([]);
-    setOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Recommendation
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Recommendation</DialogTitle>
@@ -136,9 +134,9 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAdd
                 <SelectValue placeholder="Select recommendation type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="buy">Buy</SelectItem>
-                <SelectItem value="sell">Sell</SelectItem>
-                <SelectItem value="hold">Hold</SelectItem>
+                <SelectItem value="Equity">Equity</SelectItem>
+                <SelectItem value="Fixed Income">Fixed Income</SelectItem>
+                <SelectItem value="Alternative">Alternative</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -213,7 +211,7 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAdd
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>Create Recommendation</Button>
