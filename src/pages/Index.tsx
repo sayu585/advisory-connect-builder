@@ -16,24 +16,24 @@ const Index = () => {
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              KULSTOCK COMMUNICATION
+              INTERNAL COMMUNICATION PORTAL
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              A complete client relationship management system designed specifically for financial advisors. 
-              Securely manage client relationships and deliver personalized investment recommendations.
+              Welcome to our company's exclusive client relationship management system. 
+              Access secure client information and deliver personalized investment recommendations efficiently.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {user ? (
                 <Button size="lg" asChild>
-                  <Link to="/dashboard">Go to Dashboard</Link>
+                  <Link to="/dashboard">Access Dashboard</Link>
                 </Button>
               ) : (
                 <>
                   <Button size="lg" asChild>
-                    <Link to="/login">Sign In</Link>
+                    <Link to="/login">Employee Sign In</Link>
                   </Button>
                   <Button size="lg" variant="outline" asChild>
-                    <Link to="/register">Create Account</Link>
+                    <Link to="/register">Request Access</Link>
                   </Button>
                 </>
               )}
@@ -47,7 +47,7 @@ const Index = () => {
                 <Shield className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Secure Access</h3>
                 <p className="text-gray-600">
-                  Role-based access control ensures data security and appropriate permissions.
+                  Role-based access control ensures company data security and appropriate permissions.
                 </p>
               </CardContent>
             </Card>
@@ -57,7 +57,7 @@ const Index = () => {
                 <Users className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Client Management</h3>
                 <p className="text-gray-600">
-                  Easily manage client information, interactions, and communication history.
+                  Easily manage internal client information, interactions, and communication history.
                 </p>
               </CardContent>
             </Card>
@@ -67,7 +67,7 @@ const Index = () => {
                 <ClipboardList className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Recommendations</h3>
                 <p className="text-gray-600">
-                  Create and track investment recommendations with multiple price targets.
+                  Create and track company investment recommendations with multiple price targets.
                 </p>
               </CardContent>
             </Card>
@@ -77,7 +77,7 @@ const Index = () => {
                 <BarChart3 className="h-12 w-12 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Analytics</h3>
                 <p className="text-gray-600">
-                  Track client acknowledgments and monitor recommendation performance.
+                  Track client acknowledgments and monitor internal recommendation performance.
                 </p>
               </CardContent>
             </Card>
@@ -88,7 +88,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="container mx-auto px-4 text-center text-gray-500">
-          <p>&copy; {new Date().getFullYear()} KULSTOCK COMMUNICATION. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} KULSTOCK COMMUNICATION. All rights reserved. | Company Internal Use Only</p>
         </div>
       </footer>
     </div>
