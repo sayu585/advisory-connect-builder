@@ -16,7 +16,7 @@ const Index = () => {
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              Advisory CRM Platform
+              KULSTOCK COMMUNICATION
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
               A complete client relationship management system designed specifically for financial advisors. 
@@ -88,7 +88,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="container mx-auto px-4 text-center text-gray-500">
-          <p>&copy; {new Date().getFullYear()} Advisory CRM. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} KULSTOCK COMMUNICATION. All rights reserved.</p>
         </div>
       </footer>
     </div>

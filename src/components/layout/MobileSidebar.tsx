@@ -61,7 +61,7 @@ const MobileSidebar = () => {
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-center h-16 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-primary">Advisory CRM</h2>
+        <h2 className="text-xl font-semibold text-primary">KULSTOCK COMMUNICATION</h2>
       </div>
       <nav className="flex-1 overflow-y-auto p-4">
         <ul className="space-y-1">

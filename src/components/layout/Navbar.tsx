@@ -35,7 +35,7 @@ const Navbar = () => {
           </SheetContent>
         </Sheet>
         <Link to="/" className="ml-3 md:hidden">
-          <h1 className="text-lg font-bold text-primary">Advisory CRM</h1>
+          <h1 className="text-lg font-bold text-primary">KULSTOCK COMMUNICATION</h1>
         </Link>
       </div>
 

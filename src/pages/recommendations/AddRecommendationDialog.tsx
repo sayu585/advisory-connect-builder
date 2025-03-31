@@ -1,8 +1,9 @@
 
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -10,20 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -31,264 +20,204 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PlusCircle, X } from "lucide-react";
+import { v4 as uuidv4 } from 'uuid';
 
-// For demo purposes - in a real app would come from API
+// Mock clients data
 const mockClients = [
-  { id: "client1", name: "John Smith" },
-  { id: "client2", name: "Sarah Johnson" },
-  { id: "client3", name: "Michael Williams" },
+  { id: "1", name: "John Doe" },
+  { id: "2", name: "Jane Smith" },
+  { id: "3", name: "Robert Johnson" },
 ];
 
-// Form schema validation
-const targetSchema = z.object({
-  price: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Price must be a positive number",
-  }),
-  timeframe: z.string().min(1, "Timeframe is required"),
-});
-
-const recommendationSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  type: z.string().min(1, "Type is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  targets: z.array(targetSchema).min(1, "At least one target is required"),
-  clientsAssigned: z.array(z.string()).min(1, "At least one client must be assigned"),
-});
-
-type RecommendationFormValues = z.infer<typeof recommendationSchema>;
-
-interface AddRecommendationDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (data: RecommendationFormValues) => void;
+interface Target {
+  id: string;
+  price: string;
+  timeframe: string;
 }
 
-const AddRecommendationDialog = ({ 
-  open, 
-  onOpenChange,
-  onSubmit 
-}: AddRecommendationDialogProps) => {
-  const form = useForm<RecommendationFormValues>({
-    resolver: zodResolver(recommendationSchema),
-    defaultValues: {
-      title: "",
-      type: "",
-      description: "",
-      targets: [{ price: "", timeframe: "" }],
-      clientsAssigned: [],
-    },
-  });
+interface AddRecommendationDialogProps {
+  onAddRecommendation: (recommendation: {
+    title?: string;
+    type?: string;
+    description?: string;
+    targets?: { price?: string; timeframe?: string; }[];
+    clientsAssigned?: string[];
+  }) => void;
+}
 
-  const addTarget = () => {
-    const targets = form.getValues("targets");
-    form.setValue("targets", [...targets, { price: "", timeframe: "" }]);
+const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ onAddRecommendation }) => {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [targets, setTargets] = useState<Target[]>([
+    { id: uuidv4(), price: "", timeframe: "" }
+  ]);
+  const [clientsAssigned, setClientsAssigned] = useState<string[]>([]);
+
+  const handleAddTarget = () => {
+    setTargets([...targets, { id: uuidv4(), price: "", timeframe: "" }]);
   };
 
-  const removeTarget = (index: number) => {
-    const targets = form.getValues("targets");
+  const handleRemoveTarget = (id: string) => {
     if (targets.length > 1) {
-      form.setValue("targets", targets.filter((_, i) => i !== index));
+      setTargets(targets.filter(target => target.id !== id));
     }
   };
 
-  const handleFormSubmit = (data: RecommendationFormValues) => {
-    // Process the form data
-    const processedData = {
-      ...data,
-      targets: data.targets.map((target, idx) => ({
-        id: `target-${Date.now()}-${idx}`,
-        price: parseFloat(target.price),
-        timeframe: target.timeframe,
-      })),
-    };
+  const handleTargetChange = (id: string, field: keyof Target, value: string) => {
+    setTargets(targets.map(target => 
+      target.id === id ? { ...target, [field]: value } : target
+    ));
+  };
+
+  const handleToggleClient = (clientId: string) => {
+    if (clientsAssigned.includes(clientId)) {
+      setClientsAssigned(clientsAssigned.filter(id => id !== clientId));
+    } else {
+      setClientsAssigned([...clientsAssigned, clientId]);
+    }
+  };
+
+  const handleSubmit = () => {
+    // Convert targets to the expected format
+    const formattedTargets = targets.map(target => ({
+      price: target.price,
+      timeframe: target.timeframe
+    }));
+
+    onAddRecommendation({
+      title,
+      type,
+      description,
+      targets: formattedTargets,
+      clientsAssigned
+    });
     
-    onSubmit(processedData);
+    // Reset form
+    setTitle("");
+    setType("");
+    setDescription("");
+    setTargets([{ id: uuidv4(), price: "", timeframe: "" }]);
+    setClientsAssigned([]);
+    setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Recommendation
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Recommendation</DialogTitle>
           <DialogDescription>
-            Create a new investment recommendation for your clients
+            Create a new investment recommendation for your clients.
           </DialogDescription>
         </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="AAPL Buy Recommendation" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    A concise title for your recommendation
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="title">Title</Label>
+            <Input 
+              id="title" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              placeholder="Enter recommendation title"
             />
-
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a recommendation type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Equity">Equity</SelectItem>
-                      <SelectItem value="Fixed Income">Fixed Income</SelectItem>
-                      <SelectItem value="Alternative">Alternative</SelectItem>
-                      <SelectItem value="Fund">Fund</SelectItem>
-                      <SelectItem value="ETF">ETF</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    The type of investment recommendation
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="type">Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select recommendation type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+                <SelectItem value="hold">Hold</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea 
+              id="description" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Enter recommendation details"
             />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Provide details about your recommendation..." 
-                      className="min-h-[100px]" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    A detailed explanation of your investment recommendation
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div>
-              <FormLabel>Price Targets</FormLabel>
-              <FormDescription className="mb-2">
-                Set one or more price targets with timeframes
-              </FormDescription>
-              
-              {form.watch("targets").map((_, index) => (
-                <div key={index} className="flex gap-3 items-end mb-2">
-                  <FormField
-                    control={form.control}
-                    name={`targets.${index}.price`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel className="text-xs">Target Price ($)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="185.50" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`targets.${index}.timeframe`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel className="text-xs">Timeframe</FormLabel>
-                        <FormControl>
-                          <Input placeholder="3 months" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeTarget(index)}
-                    disabled={form.watch("targets").length <= 1}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={addTarget}
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Price Targets</Label>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                type="button" 
+                onClick={handleAddTarget}
               >
-                <PlusCircle className="mr-2 h-4 w-4" />
+                <PlusCircle className="h-4 w-4 mr-1" />
                 Add Target
               </Button>
             </div>
-
-            <FormField
-              control={form.control}
-              name="clientsAssigned"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assign Clients</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    {mockClients.map(client => (
-                      <div key={client.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`client-${client.id}`}
-                          value={client.id}
-                          checked={field.value.includes(client.id)}
-                          onChange={e => {
-                            const checked = e.target.checked;
-                            const value = e.target.value;
-                            if (checked) {
-                              field.onChange([...field.value, value]);
-                            } else {
-                              field.onChange(field.value.filter(val => val !== value));
-                            }
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        <label htmlFor={`client-${client.id}`} className="text-sm">
-                          {client.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  <FormDescription>
-                    Select which clients should receive this recommendation
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">Create Recommendation</Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            {targets.map((target, index) => (
+              <div key={target.id} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Input 
+                    value={target.price} 
+                    onChange={(e) => handleTargetChange(target.id, "price", e.target.value)} 
+                    placeholder="Price"
+                    type="text"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Input 
+                    value={target.timeframe} 
+                    onChange={(e) => handleTargetChange(target.id, "timeframe", e.target.value)} 
+                    placeholder="Timeframe"
+                  />
+                </div>
+                {targets.length > 1 && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleRemoveTarget(target.id)}
+                    className="h-9 w-9"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-2">
+            <Label>Assign Clients</Label>
+            <div className="border rounded-md p-3 space-y-2">
+              {mockClients.map((client) => (
+                <div key={client.id} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`client-${client.id}`}
+                    checked={clientsAssigned.includes(client.id)}
+                    onChange={() => handleToggleClient(client.id)}
+                    className="mr-2"
+                  />
+                  <Label htmlFor={`client-${client.id}`}>{client.name}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>Create Recommendation</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -60,7 +60,7 @@ const Sidebar = () => {
   return (
     <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200">
       <div className="flex items-center justify-center h-16 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-primary">Advisory CRM</h2>
+        <h2 className="text-xl font-semibold text-primary">KULSTOCK COMMUNICATION</h2>
       </div>
       <nav className="flex-1 overflow-y-auto p-4">
         <ul className="space-y-1">
