@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   Menu, X, Bell, Settings, LogOut, User
@@ -19,6 +19,12 @@ import MobileSidebar from "./MobileSidebar";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <nav className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between">
@@ -34,12 +40,14 @@ const Navbar = () => {
             <MobileSidebar />
           </SheetContent>
         </Sheet>
-        <Link to="/" className="ml-3 md:hidden">
+        <div className="ml-3 md:hidden">
           <h1 className="text-lg font-bold text-primary">KULSTOCK COMMUNICATION</h1>
-        </Link>
+        </div>
       </div>
 
-      <div className="flex-1 hidden md:block"></div>
+      <div className="flex-1 hidden md:block">
+        <h1 className="text-xl font-bold text-primary">KULSTOCK COMMUNICATION</h1>
+      </div>
 
       <div className="flex items-center space-x-4">
         <Button variant="ghost" size="icon">
@@ -77,7 +85,7 @@ const Navbar = () => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="cursor-pointer">
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
