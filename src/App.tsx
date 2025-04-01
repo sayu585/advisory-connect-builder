@@ -17,6 +17,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Recommendations from "./pages/recommendations/Recommendations";
 import Clients from "./pages/clients/Clients";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
+import AdminManagement from "./pages/admin/AdminManagement";
 import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// This component handles main admin only routes
+const MainAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isMainAdmin, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+  
+  if (!isMainAdmin()) {
+    return <Navigate to="/unauthorized" replace />;
   }
   
   return <>{children}</>;
@@ -62,9 +82,10 @@ const AppRoutes = () => {
         <Route path="/clients" element={<Clients />} />
       </Route>
 
-      {/* Admin-only routes */}
+      {/* Admin routes */}
       <Route element={<MainLayout allowedRoles={["admin"]} />}>
         <Route path="/admin/users" element={<div>User Management (Admin Only)</div>} />
+        <Route path="/admin/management" element={<AdminManagement />} />
       </Route>
 
       {/* Catch-all route */}

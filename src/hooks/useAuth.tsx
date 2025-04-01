@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  isMainAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -15,6 +16,8 @@ interface AuthContextType {
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   register: (name: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => void;
+  createSubAdmin: (name: string, email: string, password: string) => Promise<void>;
+  isMainAdmin: () => boolean;
 }
 
 // Create context with default values
@@ -24,11 +27,13 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   logout: () => {},
+  createSubAdmin: async () => {},
+  isMainAdmin: () => false,
 });
 
 // Mock user database for demonstration - in a real app, this would be a real API
 const MOCK_USERS = [
-  { id: "1", name: "Admin User", email: "admin@example.com", password: "password123", role: "admin" },
+  { id: "1", name: "Admin User", email: "admin@example.com", password: "password123", role: "admin", isMainAdmin: true },
   { id: "2", name: "Client User", email: "client@example.com", password: "password123", role: "client" },
 ];
 
@@ -102,6 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email,
           password, // In a real app, this would be hashed on the server
           role,
+          isMainAdmin: false
         };
         
         // Add to mock database (this is just for demonstration)
@@ -122,6 +128,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Create sub-admin function (only available to main admin)
+  const createSubAdmin = async (name: string, email: string, password: string) => {
+    if (!user || !user.isMainAdmin) {
+      toast.error("Only the main admin can create sub-admins");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check if user already exists
+      const existingUser = MOCK_USERS.find(u => u.email === email);
+      
+      if (existingUser) {
+        toast.error("User with this email already exists");
+      } else {
+        // In a real app, this would be a server-side API call to create a user
+        const newUser = {
+          id: String(MOCK_USERS.length + 1),
+          name,
+          email,
+          password, // In a real app, this would be hashed on the server
+          role: "admin",
+          isMainAdmin: false
+        };
+        
+        // Add to mock database (this is just for demonstration)
+        MOCK_USERS.push(newUser);
+        
+        toast.success("Sub-admin created successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to create sub-admin. Please try again.");
+      console.error("Create sub-admin error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to check if current user is main admin
+  const isMainAdmin = () => {
+    return !!user?.isMainAdmin;
+  };
+
   // Logout function
   const logout = () => {
     setUser(null);
@@ -130,7 +183,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, createSubAdmin, isMainAdmin }}>
       {children}
     </AuthContext.Provider>
   );
