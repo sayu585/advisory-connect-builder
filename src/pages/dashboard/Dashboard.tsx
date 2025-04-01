@@ -1,15 +1,19 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, ClipboardList, MessageSquare, TrendingUp } from "lucide-react";
+import { Users, ClipboardList, MessageSquare, TrendingUp, Bell } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, getPendingRequests } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
+  const pendingRequests = getPendingRequests();
+
+  const [showRequests, setShowRequests] = useState(false);
 
   const handleCardClick = (destination: string, title: string) => {
     if (destination) {
@@ -21,13 +25,65 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back, {user?.name}
-        </h1>
-        <p className="text-muted-foreground">
-          Here's an overview of your advisory platform
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Welcome back, {user?.name}
+          </h1>
+          <p className="text-muted-foreground">
+            Here's an overview of your advisory platform
+          </p>
+        </div>
+        
+        {isAdmin && pendingRequests.length > 0 && (
+          <div className="relative">
+            <button 
+              className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+              onClick={() => setShowRequests(!showRequests)}
+            >
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                {pendingRequests.length}
+              </span>
+            </button>
+            
+            {showRequests && (
+              <div className="absolute right-0 mt-2 w-80 bg-white shadow-lg rounded-md border z-50">
+                <div className="p-3 border-b">
+                  <h4 className="font-medium">Access Requests</h4>
+                </div>
+                <div className="max-h-64 overflow-auto">
+                  {pendingRequests.map(request => (
+                    <div key={request.id} className="p-3 border-b hover:bg-gray-50">
+                      <p className="text-sm font-medium">{request.requesterName}</p>
+                      <p className="text-xs text-gray-500">Requested access to {request.clientName}</p>
+                      <div className="flex gap-2 mt-2">
+                        <button 
+                          className="text-xs bg-primary text-white px-2 py-1 rounded"
+                          onClick={() => {
+                            useAuth().approveAccessRequest(request.id);
+                            if (pendingRequests.length === 1) setShowRequests(false);
+                          }}
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          className="text-xs bg-gray-200 px-2 py-1 rounded"
+                          onClick={() => {
+                            useAuth().rejectAccessRequest(request.id);
+                            if (pendingRequests.length === 1) setShowRequests(false);
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -169,9 +225,9 @@ const Dashboard = () => {
                 <p className="text-sm font-medium">Client Review</p>
                 <p className="text-xs text-muted-foreground">Tomorrow, 9:00 AM</p>
               </div>
-              <div className="bg-yellow-100 text-yellow-800 text-xs py-1 px-2 rounded-full">
+              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
                 Pending
-              </div>
+              </Badge>
             </div>
             <div 
               className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
@@ -184,9 +240,9 @@ const Dashboard = () => {
                 <p className="text-sm font-medium">Strategy Meeting</p>
                 <p className="text-xs text-muted-foreground">May 10, 2:00 PM</p>
               </div>
-              <div className="bg-green-100 text-green-800 text-xs py-1 px-2 rounded-full">
+              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                 Confirmed
-              </div>
+              </Badge>
             </div>
             <div 
               className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
@@ -199,9 +255,9 @@ const Dashboard = () => {
                 <p className="text-sm font-medium">Quarterly Report</p>
                 <p className="text-xs text-muted-foreground">May 15, 11:00 AM</p>
               </div>
-              <div className="bg-blue-100 text-blue-800 text-xs py-1 px-2 rounded-full">
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
                 Preparation
-              </div>
+              </Badge>
             </div>
           </CardContent>
         </Card>

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle, X, CurrencyRupee } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock clients data
@@ -151,7 +151,7 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Price Targets</Label>
+              <Label>Price Targets (₹)</Label>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -164,12 +164,16 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
             </div>
             {targets.map((target, index) => (
               <div key={target.id} className="flex items-center gap-2">
-                <div className="flex-1">
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <CurrencyRupee className="h-4 w-4 text-gray-400" />
+                  </div>
                   <Input 
                     value={target.price} 
                     onChange={(e) => handleTargetChange(target.id, "price", e.target.value)} 
                     placeholder="Price"
                     type="text"
+                    className="pl-8"
                   />
                 </div>
                 <div className="flex-1">

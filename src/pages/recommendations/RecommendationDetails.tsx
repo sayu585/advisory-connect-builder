@@ -86,7 +86,7 @@ const RecommendationDetails = ({
                 <div key={target.id} className="flex items-center justify-between border-b pb-1">
                   <span className="text-sm font-medium">Target {idx + 1}</span>
                   <div className="text-sm">
-                    <span className="font-bold">${target.price}</span>
+                    <span className="font-bold">₹{target.price}</span>
                     <span className="text-muted-foreground ml-2">({target.timeframe})</span>
                   </div>
                 </div>

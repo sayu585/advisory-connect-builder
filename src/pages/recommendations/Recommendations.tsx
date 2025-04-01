@@ -32,8 +32,8 @@ const mockRecommendations = [
     type: "Equity",
     description: "Consider investing in Apple Inc. due to strong growth potential and upcoming product launches.",
     targets: [
-      { id: "t1", price: 185.75, timeframe: "3 months" },
-      { id: "t2", price: 210.50, timeframe: "1 year" },
+      { id: "t1", price: 15475.50, timeframe: "3 months" },
+      { id: "t2", price: 17550.25, timeframe: "1 year" },
     ],
     status: "Active",
     createdAt: "2023-04-15T10:30:00Z",
@@ -46,8 +46,8 @@ const mockRecommendations = [
     type: "Equity",
     description: "Recommended 5% allocation to Microsoft in conservative portfolios based on stable dividend growth.",
     targets: [
-      { id: "t3", price: 405.20, timeframe: "6 months" },
-      { id: "t4", price: 450.00, timeframe: "18 months" },
+      { id: "t3", price: 33765.75, timeframe: "6 months" },
+      { id: "t4", price: 37500.00, timeframe: "18 months" },
     ],
     status: "Active",
     createdAt: "2023-04-10T14:45:00Z",
@@ -60,7 +60,7 @@ const mockRecommendations = [
     type: "Fixed Income",
     description: "Recommend shifting allocation from short-term to medium-term treasury bonds to capture higher yields.",
     targets: [
-      { id: "t5", price: 102.75, timeframe: "3 months" },
+      { id: "t5", price: 8562.50, timeframe: "3 months" },
     ],
     status: "Active",
     createdAt: "2023-04-05T09:15:00Z",
@@ -70,7 +70,7 @@ const mockRecommendations = [
 ];
 
 const Recommendations = () => {
-  const { user } = useAuth();
+  const { user, hasAccessToClient } = useAuth();
   const isAdmin = user?.role === "admin";
   const [recommendations, setRecommendations] = useState(mockRecommendations);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -129,6 +129,17 @@ const Recommendations = () => {
     );
   };
 
+  // Filter recommendations based on client access for sub-admins
+  const filteredRecommendations = recommendations.filter(rec => {
+    if (!isAdmin) return true; // Clients can see all their recommendations
+    
+    // Check if main admin
+    if (user?.isMainAdmin) return true;
+    
+    // For sub-admins, check if they have access to any of the clients assigned to this recommendation
+    return rec.clientsAssigned.some(clientId => hasAccessToClient(clientId));
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -147,7 +158,7 @@ const Recommendations = () => {
         )}
       </div>
 
-      {recommendations.length > 0 ? (
+      {filteredRecommendations.length > 0 ? (
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -162,14 +173,14 @@ const Recommendations = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recommendations.map((recommendation) => (
+                {filteredRecommendations.map((recommendation) => (
                   <TableRow key={recommendation.id}>
                     <TableCell className="font-medium">{recommendation.title}</TableCell>
                     <TableCell>{recommendation.type}</TableCell>
                     <TableCell>
                       {recommendation.targets.map((target, idx) => (
                         <div key={target.id} className="text-sm">
-                          Target {idx + 1}: ${target.price} ({target.timeframe})
+                          Target {idx + 1}: ₹{target.price} ({target.timeframe})
                         </div>
                       ))}
                     </TableCell>

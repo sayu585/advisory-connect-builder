@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, MoreVertical, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Search, MoreVertical, UserPlus, Pencil, Trash2, LockKeyhole } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
 
 // Sample data - in a real app this would come from an API
 const mockClients = [
@@ -33,6 +34,7 @@ const mockClients = [
     status: "Active",
     recommendationsAssigned: 3,
     recommendationsAcknowledged: 2,
+    ownerId: "1" // Main admin owns this client
   },
   {
     id: "client2",
@@ -42,6 +44,7 @@ const mockClients = [
     status: "Active",
     recommendationsAssigned: 5,
     recommendationsAcknowledged: 5,
+    ownerId: "1" // Main admin owns this client
   },
   {
     id: "client3",
@@ -51,6 +54,7 @@ const mockClients = [
     status: "Inactive",
     recommendationsAssigned: 2,
     recommendationsAcknowledged: 0,
+    ownerId: "1" // Main admin owns this client
   },
   {
     id: "client4",
@@ -60,11 +64,12 @@ const mockClients = [
     status: "Active",
     recommendationsAssigned: 4,
     recommendationsAcknowledged: 3,
+    ownerId: "1" // Main admin owns this client
   },
 ];
 
 const Clients = () => {
-  const { user } = useAuth();
+  const { user, isMainAdmin, hasAccessToClient, requestClientAccess } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [clients] = useState(mockClients);
 
@@ -73,12 +78,23 @@ const Clients = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Filter clients based on search query
+  // Filter clients based on search query and access permissions
   const filteredClients = clients.filter(
-    client =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase())
+    client => {
+      const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Main admin can see all clients
+      if (isMainAdmin()) return matchesSearch;
+      
+      // Sub-admin can only see clients they own or have access to
+      return matchesSearch && hasAccessToClient(client.id);
+    }
   );
+
+  // Check if there are clients the sub-admin doesn't have access to
+  const hasInaccessibleClients = !isMainAdmin() && 
+    clients.some(client => !hasAccessToClient(client.id));
 
   return (
     <div className="space-y-6">
@@ -105,6 +121,16 @@ const Clients = () => {
           />
         </div>
       </div>
+
+      {!isMainAdmin() && hasInaccessibleClients && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-700 text-sm mb-4">
+          <p className="font-medium">Access Notice</p>
+          <p>
+            You can only view clients you've created or been granted access to. 
+            To access other clients, use the "Request Access" option from the actions menu.
+          </p>
+        </div>
+      )}
 
       <Card>
         <Table>
@@ -150,19 +176,28 @@ const Clients = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          <span>Edit Details</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          <span>Assign Recommendation</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Delete Client</span>
-                        </DropdownMenuItem>
+                        {hasAccessToClient(client.id) ? (
+                          <>
+                            <DropdownMenuItem>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit Details</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              <span>Assign Recommendation</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete Client</span>
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem onClick={() => requestClientAccess(client.id, client.name)}>
+                            <LockKeyhole className="mr-2 h-4 w-4" />
+                            <span>Request Access</span>
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
