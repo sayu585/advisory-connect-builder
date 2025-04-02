@@ -44,3 +44,55 @@ export const deleteRecommendation = (id: string) => {
   saveRecommendations(filteredRecommendations);
   return filteredRecommendations;
 };
+
+// User data
+export const saveUsers = (users: any[]) => {
+  localStorage.setItem('mockUsers', JSON.stringify(users));
+};
+
+export const loadUsers = (): any[] => {
+  try {
+    const storedData = localStorage.getItem('mockUsers');
+    return storedData ? JSON.parse(storedData) : [];
+  } catch (error) {
+    console.error('Failed to parse users from localStorage', error);
+    return [];
+  }
+};
+
+export const updateUser = (userId: string, userData: any) => {
+  const users = loadUsers();
+  const index = users.findIndex(user => user.id === userId);
+  
+  if (index !== -1) {
+    users[index] = { ...users[index], ...userData };
+    saveUsers(users);
+    
+    // If this is the currently logged-in user, update that too
+    const currentUser = loadCurrentUser();
+    if (currentUser && currentUser.id === userId) {
+      const { password, ...userWithoutPassword } = users[index];
+      saveCurrentUser({ ...userWithoutPassword });
+    }
+  }
+  
+  return users;
+};
+
+export const saveCurrentUser = (user: any) => {
+  localStorage.setItem('user', JSON.stringify(user));
+};
+
+export const loadCurrentUser = (): any | null => {
+  try {
+    const storedData = localStorage.getItem('user');
+    return storedData ? JSON.parse(storedData) : null;
+  } catch (error) {
+    console.error('Failed to parse current user from localStorage', error);
+    return null;
+  }
+};
+
+export const clearCurrentUser = () => {
+  localStorage.removeItem('user');
+};

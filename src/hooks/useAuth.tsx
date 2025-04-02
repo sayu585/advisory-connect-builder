@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -34,9 +33,9 @@ interface AuthContextType {
   approveAccessRequest: (requestId: string) => void;
   rejectAccessRequest: (requestId: string) => void;
   getPendingRequests: () => AccessRequest[];
+  updateUserProfile: (userId: string, userData: Partial<User>) => void;
 }
 
-// Create context with default values
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
@@ -51,9 +50,9 @@ const AuthContext = createContext<AuthContextType>({
   approveAccessRequest: () => {},
   rejectAccessRequest: () => {},
   getPendingRequests: () => [],
+  updateUserProfile: () => {},
 });
 
-// Load initial data from localStorage
 const loadMockUsers = () => {
   const storedUsers = localStorage.getItem("mockUsers");
   if (storedUsers) {
@@ -63,14 +62,12 @@ const loadMockUsers = () => {
       console.error("Failed to parse stored users", error);
     }
   }
-  // Default mock users
   return [
-    { id: "1", name: "Admin User", email: "admin@example.com", password: "password123", role: "admin", isMainAdmin: true },
+    { id: "1", name: "Sayanth", email: "sayanth@example.com", password: "41421014", role: "admin", isMainAdmin: true },
     { id: "2", name: "Client User", email: "client@example.com", password: "password123", role: "client" },
   ];
 };
 
-// Load initial access requests from localStorage
 const loadAccessRequests = () => {
   const storedRequests = localStorage.getItem("accessRequests");
   if (storedRequests) {
@@ -83,10 +80,8 @@ const loadAccessRequests = () => {
   return [];
 };
 
-// Mock users database with persistence
 const MOCK_USERS = loadMockUsers();
 
-// Mock clients database with ownership information
 const MOCK_CLIENTS = [
   {
     id: "client1",
@@ -130,12 +125,10 @@ const MOCK_CLIENTS = [
   },
 ];
 
-// Save MOCK_CLIENTS to localStorage
 const saveClientsData = () => {
   localStorage.setItem("mockClients", JSON.stringify(MOCK_CLIENTS));
 };
 
-// Initialize clients data in localStorage if not already present
 if (!localStorage.getItem("mockClients")) {
   saveClientsData();
 }
@@ -145,12 +138,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(loadAccessRequests());
 
-  // Save access requests to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("accessRequests", JSON.stringify(accessRequests));
   }, [accessRequests]);
 
-  // Check if user is already logged in via localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -164,29 +155,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  // Save MOCK_USERS to localStorage whenever they change
   const saveMockUsers = () => {
     localStorage.setItem("mockUsers", JSON.stringify(MOCK_USERS));
   };
 
-  // Login function
   const login = async (email: string, password: string, rememberMe: boolean) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const foundUser = MOCK_USERS.find(u => u.email === email && u.password === password);
       
       if (foundUser) {
-        // Remove password from user object before storing
         const { password, ...userWithoutPassword } = foundUser;
         setUser(userWithoutPassword);
-        
-        // Always save user to localStorage to persist login across page refreshes
         localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-        
         toast.success("Login successful!");
       } else {
         toast.error("Invalid email or password");
@@ -199,36 +183,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Register function
   const register = async (name: string, email: string, password: string, role = "client") => {
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if user already exists
       const existingUser = MOCK_USERS.find(u => u.email === email);
       
       if (existingUser) {
         toast.error("User with this email already exists");
       } else {
-        // In a real app, this would be a server-side API call to create a user
         const newUser = {
           id: String(MOCK_USERS.length + 1),
           name,
           email,
-          password, // In a real app, this would be hashed on the server
+          password,
           role,
           isMainAdmin: false
         };
         
-        // Add to mock database (this is just for demonstration)
         MOCK_USERS.push(newUser);
-        // Save updated users to localStorage
         saveMockUsers();
         
-        // Remove password from user object before storing
         const { password: _, ...userWithoutPassword } = newUser;
         setUser(userWithoutPassword);
         localStorage.setItem("user", JSON.stringify(userWithoutPassword));
@@ -243,7 +220,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Create sub-admin function (only available to main admin)
   const createSubAdmin = async (name: string, email: string, password: string) => {
     if (!user || !user.isMainAdmin) {
       toast.error("Only the main admin can create sub-admins");
@@ -253,28 +229,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if user already exists
       const existingUser = MOCK_USERS.find(u => u.email === email);
       
       if (existingUser) {
         toast.error("User with this email already exists");
       } else {
-        // In a real app, this would be a server-side API call to create a user
         const newUser = {
           id: String(MOCK_USERS.length + 1),
           name,
           email,
-          password, // In a real app, this would be hashed on the server
+          password,
           role: "admin",
           isMainAdmin: false
         };
         
-        // Add to mock database (this is just for demonstration)
         MOCK_USERS.push(newUser);
-        // Save updated users to localStorage
         saveMockUsers();
         
         toast.success("Sub-admin created successfully!");
@@ -287,27 +258,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Helper function to check if current user is main admin
   const isMainAdmin = () => {
     return !!user?.isMainAdmin;
   };
 
-  // Get client ownership
   const getClientOwnership = (clientId: string) => {
     const client = MOCK_CLIENTS.find(c => c.id === clientId);
     return client ? client.ownerId : "";
   };
 
-  // Check if user has access to client
   const hasAccessToClient = (clientId: string) => {
-    // Main admin has access to all clients
     if (isMainAdmin()) return true;
     
-    // Check if user is owner of the client
     const client = MOCK_CLIENTS.find(c => c.id === clientId);
     if (client && user && client.ownerId === user.id) return true;
     
-    // Check if there is an approved access request
     const approvedRequest = accessRequests.find(
       req => req.clientId === clientId && 
              req.requesterId === user?.id && 
@@ -317,11 +282,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return !!approvedRequest;
   };
 
-  // Request access to client
   const requestClientAccess = (clientId: string, clientName: string) => {
     if (!user) return;
     
-    // Check if request already exists
     const existingRequest = accessRequests.find(
       req => req.clientId === clientId && req.requesterId === user.id && req.status === "pending"
     );
@@ -345,7 +308,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     toast.success("Access request submitted");
   };
 
-  // Approve access request
   const approveAccessRequest = (requestId: string) => {
     setAccessRequests(prev => 
       prev.map(req => 
@@ -355,7 +317,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     toast.success("Access request approved");
   };
 
-  // Reject access request
   const rejectAccessRequest = (requestId: string) => {
     setAccessRequests(prev => 
       prev.map(req => 
@@ -365,14 +326,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     toast.info("Access request rejected");
   };
 
-  // Get pending access requests
   const getPendingRequests = () => {
-    // Main admin can see all pending requests
     if (isMainAdmin()) {
       return accessRequests.filter(req => req.status === "pending");
     }
     
-    // Sub-admin can only see requests for clients they own
     if (user && user.role === "admin") {
       return accessRequests.filter(req => {
         const client = MOCK_CLIENTS.find(c => c.id === req.clientId);
@@ -383,11 +341,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return [];
   };
 
-  // Logout function
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
     toast.success("Logged out successfully");
+  };
+
+  const updateUserProfile = (userId: string, userData: Partial<User>) => {
+    const userIndex = MOCK_USERS.findIndex(u => u.id === userId);
+    
+    if (userIndex === -1) {
+      toast.error("User not found");
+      return;
+    }
+    
+    if (userData.email && userData.email !== MOCK_USERS[userIndex].email) {
+      const emailExists = MOCK_USERS.some(
+        (u, idx) => idx !== userIndex && u.email === userData.email
+      );
+      
+      if (emailExists) {
+        toast.error("Email already in use");
+        return;
+      }
+    }
+    
+    MOCK_USERS[userIndex] = {
+      ...MOCK_USERS[userIndex],
+      ...userData
+    };
+    
+    saveMockUsers();
+    
+    if (user && user.id === userId) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      toast.success("Profile updated successfully");
+    } else {
+      toast.success("User profile updated");
+    }
   };
 
   return (
@@ -404,14 +397,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       requestClientAccess,
       approveAccessRequest,
       rejectAccessRequest,
-      getPendingRequests
+      getPendingRequests,
+      updateUserProfile
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use auth context
 export const useAuth = () => useContext(AuthContext);
 
 export default useAuth;

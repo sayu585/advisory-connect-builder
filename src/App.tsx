@@ -16,6 +16,7 @@ import MainLayout from "./components/layout/MainLayout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Recommendations from "./pages/recommendations/Recommendations";
 import Clients from "./pages/clients/Clients";
+import Profile from "./pages/profile/Profile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
 import AdminManagement from "./pages/admin/AdminManagement";
 import { useAuth } from "./hooks/useAuth";
@@ -80,6 +81,7 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* Admin routes */}
