@@ -1,19 +1,28 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, ClipboardList, MessageSquare, TrendingUp, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { loadClients, loadRecommendations } from "@/utils/localStorage";
 
 const Dashboard = () => {
-  const { user, getPendingRequests } = useAuth();
+  const { user, getPendingRequests, approveAccessRequest, rejectAccessRequest } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const pendingRequests = getPendingRequests();
+  const [clients, setClients] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
 
   const [showRequests, setShowRequests] = useState(false);
+
+  // Load data from localStorage
+  useEffect(() => {
+    setClients(loadClients());
+    setRecommendations(loadRecommendations());
+  }, []);
 
   const handleCardClick = (destination: string, title: string) => {
     if (destination) {
@@ -22,6 +31,16 @@ const Dashboard = () => {
       toast.info(`${title} feature coming soon!`);
     }
   };
+
+  // Calculate stats
+  const clientCount = clients.length;
+  const activeRecommendationsCount = recommendations.length;
+  const acknowledgedRecommendationsCount = isAdmin 
+    ? recommendations.reduce((sum, rec) => sum + (rec.clientsAcknowledged?.length || 0), 0) 
+    : recommendations.filter(rec => rec.clientsAcknowledged?.includes(user?.id)).length;
+  const pendingAcknowledgementsCount = isAdmin
+    ? recommendations.reduce((sum, rec) => sum + ((rec.clientsAssigned?.length || 0) - (rec.clientsAcknowledged?.length || 0)), 0)
+    : recommendations.filter(rec => !rec.clientsAcknowledged?.includes(user?.id)).length;
 
   return (
     <div className="space-y-6">
@@ -61,7 +80,7 @@ const Dashboard = () => {
                         <button 
                           className="text-xs bg-primary text-white px-2 py-1 rounded"
                           onClick={() => {
-                            useAuth().approveAccessRequest(request.id);
+                            approveAccessRequest(request.id);
                             if (pendingRequests.length === 1) setShowRequests(false);
                           }}
                         >
@@ -70,7 +89,7 @@ const Dashboard = () => {
                         <button 
                           className="text-xs bg-gray-200 px-2 py-1 rounded"
                           onClick={() => {
-                            useAuth().rejectAccessRequest(request.id);
+                            rejectAccessRequest(request.id);
                             if (pendingRequests.length === 1) setShowRequests(false);
                           }}
                         >
@@ -98,9 +117,9 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isAdmin ? "24" : "-"}</div>
+            <div className="text-2xl font-bold">{isAdmin ? clientCount : "-"}</div>
             <p className="text-xs text-muted-foreground">
-              {isAdmin ? "+2 from last month" : "Contact your admin for details"}
+              {isAdmin ? "Manage all your clients" : "Contact your admin for details"}
             </p>
           </CardContent>
         </Card>
@@ -115,11 +134,11 @@ const Dashboard = () => {
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isAdmin ? "12" : "5"}</div>
+            <div className="text-2xl font-bold">{activeRecommendationsCount}</div>
             <p className="text-xs text-muted-foreground">
               {isAdmin
-                ? "+4 added this month"
-                : "2 require acknowledgment"}
+                ? `${acknowledgedRecommendationsCount} acknowledgments received`
+                : `${pendingAcknowledgementsCount} require acknowledgment`}
             </p>
           </CardContent>
         </Card>
@@ -129,14 +148,14 @@ const Dashboard = () => {
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Unread Messages
+              Messages
             </CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">7</div>
+            <div className="text-2xl font-bold">-</div>
             <p className="text-xs text-muted-foreground">
-              3 new since yesterday
+              Coming soon
             </p>
           </CardContent>
         </Card>
@@ -151,9 +170,9 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+12.5%</div>
+            <div className="text-2xl font-bold">-</div>
             <p className="text-xs text-muted-foreground">
-              From previous period
+              Coming soon
             </p>
           </CardContent>
         </Card>
@@ -178,28 +197,30 @@ const Dashboard = () => {
                 navigate("/recommendations");
               }}
             >
-              <p className="text-sm font-medium">New recommendation added</p>
-              <p className="text-xs text-muted-foreground">Today, 10:30 AM</p>
+              <p className="text-sm font-medium">View recommendations</p>
+              <p className="text-xs text-muted-foreground">Click to manage recommendations</p>
             </div>
+            {isAdmin && (
+              <div 
+                className="border-l-4 border-muted pl-4 py-2 cursor-pointer hover:bg-gray-50 rounded-r"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/clients");
+                }}
+              >
+                <p className="text-sm font-medium">Manage clients</p>
+                <p className="text-xs text-muted-foreground">Click to view clients</p>
+              </div>
+            )}
             <div 
               className="border-l-4 border-muted pl-4 py-2 cursor-pointer hover:bg-gray-50 rounded-r"
               onClick={(e) => {
                 e.stopPropagation();
-                toast.info("Client meeting details coming soon!");
+                navigate("/profile");
               }}
             >
-              <p className="text-sm font-medium">Client meeting scheduled</p>
-              <p className="text-xs text-muted-foreground">Yesterday, 2:15 PM</p>
-            </div>
-            <div 
-              className="border-l-4 border-muted pl-4 py-2 cursor-pointer hover:bg-gray-50 rounded-r"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/recommendations");
-              }}
-            >
-              <p className="text-sm font-medium">Recommendation acknowledged</p>
-              <p className="text-xs text-muted-foreground">Yesterday, 11:45 AM</p>
+              <p className="text-sm font-medium">Update profile</p>
+              <p className="text-xs text-muted-foreground">Click to edit your information</p>
             </div>
           </CardContent>
         </Card>
@@ -214,49 +235,13 @@ const Dashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div 
-              className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
-              onClick={(e) => {
-                e.stopPropagation();
-                toast.info("Client review details coming soon!");
-              }}
-            >
+            <div className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
               <div>
-                <p className="text-sm font-medium">Client Review</p>
-                <p className="text-xs text-muted-foreground">Tomorrow, 9:00 AM</p>
-              </div>
-              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                Pending
-              </Badge>
-            </div>
-            <div 
-              className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
-              onClick={(e) => {
-                e.stopPropagation();
-                toast.info("Strategy meeting details coming soon!");
-              }}
-            >
-              <div>
-                <p className="text-sm font-medium">Strategy Meeting</p>
-                <p className="text-xs text-muted-foreground">May 10, 2:00 PM</p>
-              </div>
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                Confirmed
-              </Badge>
-            </div>
-            <div 
-              className="flex justify-between items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
-              onClick={(e) => {
-                e.stopPropagation();
-                toast.info("Quarterly report details coming soon!");
-              }}
-            >
-              <div>
-                <p className="text-sm font-medium">Quarterly Report</p>
-                <p className="text-xs text-muted-foreground">May 15, 11:00 AM</p>
+                <p className="text-sm font-medium">Feature Coming Soon</p>
+                <p className="text-xs text-muted-foreground">Task management will be available soon</p>
               </div>
               <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                Preparation
+                Upcoming
               </Badge>
             </div>
           </CardContent>

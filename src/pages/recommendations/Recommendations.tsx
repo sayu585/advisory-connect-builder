@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Eye, Edit, Trash2, CheckCircle, AlertCircle } from "lucide-react";
@@ -23,73 +23,36 @@ import {
 } from "@/components/ui/table";
 import AddRecommendationDialog from "./AddRecommendationDialog";
 import RecommendationDetails from "./RecommendationDetails";
-
-// Sample data - in a real app this would come from an API
-const mockRecommendations = [
-  {
-    id: "1",
-    title: "AAPL Stock Buy Recommendation",
-    type: "Equity",
-    description: "Consider investing in Apple Inc. due to strong growth potential and upcoming product launches.",
-    targets: [
-      { id: "t1", price: 15475.50, timeframe: "3 months" },
-      { id: "t2", price: 17550.25, timeframe: "1 year" },
-    ],
-    status: "Active",
-    createdAt: "2023-04-15T10:30:00Z",
-    clientsAcknowledged: ["client1", "client2"],
-    clientsAssigned: ["client1", "client2", "client3"],
-  },
-  {
-    id: "2",
-    title: "MSFT Conservative Portfolio Allocation",
-    type: "Equity",
-    description: "Recommended 5% allocation to Microsoft in conservative portfolios based on stable dividend growth.",
-    targets: [
-      { id: "t3", price: 33765.75, timeframe: "6 months" },
-      { id: "t4", price: 37500.00, timeframe: "18 months" },
-    ],
-    status: "Active",
-    createdAt: "2023-04-10T14:45:00Z",
-    clientsAcknowledged: ["client1"],
-    clientsAssigned: ["client1", "client3"],
-  },
-  {
-    id: "3",
-    title: "Treasury Bond Rotation Strategy",
-    type: "Fixed Income",
-    description: "Recommend shifting allocation from short-term to medium-term treasury bonds to capture higher yields.",
-    targets: [
-      { id: "t5", price: 8562.50, timeframe: "3 months" },
-    ],
-    status: "Active",
-    createdAt: "2023-04-05T09:15:00Z",
-    clientsAcknowledged: ["client2", "client3"],
-    clientsAssigned: ["client1", "client2", "client3"],
-  },
-];
+import { loadRecommendations, saveRecommendations, deleteRecommendation as deleteRecommendationFromStorage } from "@/utils/localStorage";
+import { v4 as uuidv4 } from 'uuid';
 
 const Recommendations = () => {
   const { user, hasAccessToClient } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [recommendations, setRecommendations] = useState(mockRecommendations);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // Load recommendations from localStorage on component mount
+  useEffect(() => {
+    setRecommendations(loadRecommendations());
+  }, []);
+
   const handleAddRecommendation = (newRecommendation: any) => {
-    setRecommendations([
-      {
-        ...newRecommendation,
-        id: `rec-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        status: "Active",
-        clientsAcknowledged: [],
-        clientsAssigned: newRecommendation.clientsAssigned || [],
-      },
-      ...recommendations,
-    ]);
+    const recommendationWithId = {
+      ...newRecommendation,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      status: "Active",
+      clientsAcknowledged: [],
+      clientsAssigned: newRecommendation.clientsAssigned || [],
+    };
+    
+    const updatedRecommendations = [recommendationWithId, ...recommendations];
+    setRecommendations(updatedRecommendations);
+    saveRecommendations(updatedRecommendations);
     setIsAddDialogOpen(false);
   };
 
@@ -109,24 +72,31 @@ const Recommendations = () => {
   };
 
   const handleConfirmDelete = () => {
-    setRecommendations(recommendations.filter(rec => rec.id !== selectedRecommendation.id));
-    setIsDeleteDialogOpen(false);
-    setSelectedRecommendation(null);
+    if (selectedRecommendation) {
+      const updatedRecommendations = recommendations.filter(rec => rec.id !== selectedRecommendation.id);
+      setRecommendations(updatedRecommendations);
+      saveRecommendations(updatedRecommendations);
+      deleteRecommendationFromStorage(selectedRecommendation.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedRecommendation(null);
+    }
   };
 
   const handleAcknowledge = (recommendationId: string) => {
-    // In a real app, this would send a request to the server to acknowledge the recommendation
-    setRecommendations(
-      recommendations.map(rec => {
-        if (rec.id === recommendationId && user && !rec.clientsAcknowledged.includes(user.id)) {
-          return {
-            ...rec,
-            clientsAcknowledged: [...rec.clientsAcknowledged, user.id],
-          };
-        }
-        return rec;
-      })
-    );
+    if (!user) return;
+
+    const updatedRecommendations = recommendations.map(rec => {
+      if (rec.id === recommendationId && !rec.clientsAcknowledged.includes(user.id)) {
+        return {
+          ...rec,
+          clientsAcknowledged: [...rec.clientsAcknowledged, user.id],
+        };
+      }
+      return rec;
+    });
+    
+    setRecommendations(updatedRecommendations);
+    saveRecommendations(updatedRecommendations);
   };
 
   // Filter recommendations based on client access for sub-admins
@@ -137,7 +107,7 @@ const Recommendations = () => {
     if (user?.isMainAdmin) return true;
     
     // For sub-admins, check if they have access to any of the clients assigned to this recommendation
-    return rec.clientsAssigned.some(clientId => hasAccessToClient(clientId));
+    return rec.clientsAssigned && rec.clientsAssigned.some((clientId: string) => hasAccessToClient(clientId));
   });
 
   return (
@@ -178,7 +148,7 @@ const Recommendations = () => {
                     <TableCell className="font-medium">{recommendation.title}</TableCell>
                     <TableCell>{recommendation.type}</TableCell>
                     <TableCell>
-                      {recommendation.targets.map((target, idx) => (
+                      {recommendation.targets && recommendation.targets.map((target: any, idx: number) => (
                         <div key={target.id} className="text-sm">
                           Target {idx + 1}: ₹{target.price} ({target.timeframe})
                         </div>
@@ -191,7 +161,7 @@ const Recommendations = () => {
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
-                        {recommendation.clientsAcknowledged.length}/{recommendation.clientsAssigned.length} clients
+                        {recommendation.clientsAcknowledged?.length || 0}/{recommendation.clientsAssigned?.length || 0} clients
                       </TableCell>
                     )}
                     <TableCell className="text-right">
@@ -225,9 +195,9 @@ const Recommendations = () => {
                             variant="outline" 
                             size="icon" 
                             onClick={() => handleAcknowledge(recommendation.id)}
-                            disabled={recommendation.clientsAcknowledged.includes(user?.id || "")}
+                            disabled={recommendation.clientsAcknowledged?.includes(user?.id || "")}
                           >
-                            {recommendation.clientsAcknowledged.includes(user?.id || "") ? (
+                            {recommendation.clientsAcknowledged?.includes(user?.id || "") ? (
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
                               <AlertCircle className="h-4 w-4" />
@@ -275,7 +245,7 @@ const Recommendations = () => {
           recommendation={selectedRecommendation}
           isAdmin={isAdmin}
           onAcknowledge={() => handleAcknowledge(selectedRecommendation.id)}
-          hasAcknowledged={selectedRecommendation.clientsAcknowledged.includes(user?.id || "")}
+          hasAcknowledged={selectedRecommendation.clientsAcknowledged?.includes(user?.id || "")}
         />
       )}
 

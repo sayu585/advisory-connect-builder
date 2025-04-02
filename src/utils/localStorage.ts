@@ -47,16 +47,40 @@ export const deleteRecommendation = (id: string) => {
 
 // User data
 export const saveUsers = (users: any[]) => {
-  localStorage.setItem('mockUsers', JSON.stringify(users));
+  localStorage.setItem('users', JSON.stringify(users));
 };
 
 export const loadUsers = (): any[] => {
   try {
-    const storedData = localStorage.getItem('mockUsers');
-    return storedData ? JSON.parse(storedData) : [];
+    const storedData = localStorage.getItem('users');
+    if (storedData) {
+      return JSON.parse(storedData);
+    } else {
+      // Initialize with just the main admin
+      const initialUsers = [{
+        id: "1", 
+        name: "Sayanth", 
+        email: "sayanth@example.com", 
+        password: "41421014", 
+        role: "admin", 
+        isMainAdmin: true
+      }];
+      saveUsers(initialUsers);
+      return initialUsers;
+    }
   } catch (error) {
     console.error('Failed to parse users from localStorage', error);
-    return [];
+    // Initialize with just the main admin as fallback
+    const initialUsers = [{
+      id: "1", 
+      name: "Sayanth", 
+      email: "sayanth@example.com", 
+      password: "41421014", 
+      role: "admin", 
+      isMainAdmin: true
+    }];
+    saveUsers(initialUsers);
+    return initialUsers;
   }
 };
 
@@ -95,4 +119,34 @@ export const loadCurrentUser = (): any | null => {
 
 export const clearCurrentUser = () => {
   localStorage.removeItem('user');
+};
+
+// Client data
+export const saveClients = (clients: any[]) => {
+  localStorage.setItem('clients', JSON.stringify(clients));
+};
+
+export const loadClients = (): any[] => {
+  try {
+    const storedData = localStorage.getItem('clients');
+    return storedData ? JSON.parse(storedData) : [];
+  } catch (error) {
+    console.error('Failed to parse clients from localStorage', error);
+    return [];
+  }
+};
+
+// Access requests
+export const saveAccessRequests = (requests: any[]) => {
+  localStorage.setItem('accessRequests', JSON.stringify(requests));
+};
+
+export const loadAccessRequests = (): any[] => {
+  try {
+    const storedData = localStorage.getItem('accessRequests');
+    return storedData ? JSON.parse(storedData) : [];
+  } catch (error) {
+    console.error('Failed to parse access requests from localStorage', error);
+    return [];
+  }
 };

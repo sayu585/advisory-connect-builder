@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Search, MoreVertical, UserPlus, Pencil, Trash2, LockKeyhole } from "lucide-react";
@@ -23,55 +23,18 @@ import {
 } from "@/components/ui/table";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-
-// Sample data - in a real app this would come from an API
-const mockClients = [
-  {
-    id: "client1",
-    name: "John Smith",
-    email: "john.smith@example.com",
-    phone: "555-123-4567",
-    status: "Active",
-    recommendationsAssigned: 3,
-    recommendationsAcknowledged: 2,
-    ownerId: "1" // Main admin owns this client
-  },
-  {
-    id: "client2",
-    name: "Sarah Johnson",
-    email: "sarah.j@example.com",
-    phone: "555-987-6543",
-    status: "Active",
-    recommendationsAssigned: 5,
-    recommendationsAcknowledged: 5,
-    ownerId: "1" // Main admin owns this client
-  },
-  {
-    id: "client3",
-    name: "Michael Williams",
-    email: "m.williams@example.com",
-    phone: "555-567-8901",
-    status: "Inactive",
-    recommendationsAssigned: 2,
-    recommendationsAcknowledged: 0,
-    ownerId: "1" // Main admin owns this client
-  },
-  {
-    id: "client4",
-    name: "Jessica Brown",
-    email: "jessica.b@example.com",
-    phone: "555-234-5678",
-    status: "Active",
-    recommendationsAssigned: 4,
-    recommendationsAcknowledged: 3,
-    ownerId: "1" // Main admin owns this client
-  },
-];
+import { loadClients, saveClients } from "@/utils/localStorage";
+import { v4 as uuidv4 } from 'uuid';
 
 const Clients = () => {
   const { user, isMainAdmin, hasAccessToClient, requestClientAccess } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [clients] = useState(mockClients);
+  const [clients, setClients] = useState<any[]>([]);
+
+  // Load clients from localStorage
+  useEffect(() => {
+    setClients(loadClients());
+  }, []);
 
   // Redirect if not admin
   if (user?.role !== "admin") {
@@ -96,6 +59,43 @@ const Clients = () => {
   const hasInaccessibleClients = !isMainAdmin() && 
     clients.some(client => !hasAccessToClient(client.id));
 
+  const handleAddClient = () => {
+    // In a real app, this would open a dialog to add a new client
+    // For now, let's just create a placeholder client
+    const newClient = {
+      id: uuidv4(),
+      name: `New Client ${clients.length + 1}`,
+      email: `client${clients.length + 1}@example.com`,
+      phone: "555-000-0000",
+      status: "Active",
+      recommendationsAssigned: 0,
+      recommendationsAcknowledged: 0,
+      ownerId: user?.id || "1" // Default to current user or main admin
+    };
+    
+    const updatedClients = [...clients, newClient];
+    setClients(updatedClients);
+    saveClients(updatedClients);
+    toast.success("New client added");
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    const updatedClients = clients.filter(client => client.id !== clientId);
+    setClients(updatedClients);
+    saveClients(updatedClients);
+    toast.success("Client deleted");
+  };
+
+  const handleEditClient = (client: any) => {
+    toast.info(`Editing ${client.name}`);
+    // In a real app, this would open a dialog to edit the client
+  };
+
+  const handleAssignRecommendation = (client: any) => {
+    toast.info(`Assigning recommendation to ${client.name}`);
+    // In a real app, this would open a dialog to assign a recommendation
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -105,7 +105,7 @@ const Clients = () => {
             Manage your client relationships and track their advisory progress
           </p>
         </div>
-        <Button>
+        <Button onClick={handleAddClient}>
           <UserPlus className="mr-2 h-4 w-4" /> Add Client
         </Button>
       </div>
@@ -178,16 +178,19 @@ const Clients = () => {
                         <DropdownMenuSeparator />
                         {hasAccessToClient(client.id) ? (
                           <>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditClient(client)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               <span>Edit Details</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAssignRecommendation(client)}>
                               <PlusCircle className="mr-2 h-4 w-4" />
                               <span>Assign Recommendation</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteClient(client.id)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete Client</span>
                             </DropdownMenuItem>
