@@ -29,14 +29,14 @@ const mockClients = [
   { id: "3", name: "Robert Johnson" },
 ];
 
-// Market segments and their instruments
-const marketSegments = {
-  "Equity": ["Reliance", "TCS", "HDFC Bank", "Infosys", "ITC"],
-  "Futures": ["Nifty Futures", "Bank Nifty Futures", "Reliance Futures", "TCS Futures"],
-  "Options": ["Nifty Options", "Bank Nifty Options", "Reliance Options"],
-  "Commodity": ["Gold", "Silver", "Crude Oil", "Natural Gas"],
-  "Currency": ["USD-INR", "EUR-INR", "GBP-INR", "JPY-INR"]
-};
+// Market segments
+const marketSegments = [
+  "Equity", 
+  "Futures", 
+  "Options", 
+  "Commodity", 
+  "Currency"
+];
 
 // Strike prices for options (example)
 const strikeOptions = {
@@ -75,7 +75,6 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
   const [title, setTitle] = useState("");
   const [segment, setSegment] = useState("");
   const [instrument, setInstrument] = useState("");
-  const [instruments, setInstruments] = useState<string[]>([]);
   const [strikePrice, setStrikePrice] = useState("");
   const [optionType, setOptionType] = useState("");
   const [description, setDescription] = useState("");
@@ -85,18 +84,6 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
     { id: uuidv4(), price: "" }
   ]);
   const [clientsAssigned, setClientsAssigned] = useState<string[]>([]);
-
-  // Update instruments when segment changes
-  useEffect(() => {
-    if (segment && marketSegments[segment]) {
-      setInstruments(marketSegments[segment]);
-      setInstrument("");
-      setStrikePrice("");
-      setOptionType("");
-    } else {
-      setInstruments([]);
-    }
-  }, [segment]);
 
   const handleAddTarget = () => {
     setTargets([...targets, { id: uuidv4(), price: "" }]);
@@ -161,8 +148,7 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
     setClientsAssigned([]);
   };
 
-  const showStrikePriceAndType = segment === "Options" && instrument;
-  const strikePrices = instrument && strikeOptions[instrument] ? strikeOptions[instrument] : [];
+  const showStrikePriceAndType = segment === "Options";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,27 +178,23 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
                 <SelectValue placeholder="Select market segment" />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(marketSegments).map((seg) => (
+                {marketSegments.map((seg) => (
                   <SelectItem key={seg} value={seg}>{seg}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           
-          {/* Instrument Selection (based on segment) */}
+          {/* Instrument Input Field (free text) */}
           {segment && (
             <div className="grid gap-2">
               <Label htmlFor="instrument">Instrument</Label>
-              <Select value={instrument} onValueChange={setInstrument}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select instrument" />
-                </SelectTrigger>
-                <SelectContent>
-                  {instruments.map((inst) => (
-                    <SelectItem key={inst} value={inst}>{inst}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                id="instrument"
+                value={instrument}
+                onChange={(e) => setInstrument(e.target.value)}
+                placeholder="Enter instrument name"
+              />
             </div>
           )}
           
@@ -221,16 +203,12 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="strikePrice">Strike Price</Label>
-                <Select value={strikePrice} onValueChange={setStrikePrice}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select strike price" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {strikePrices.map((strike) => (
-                      <SelectItem key={strike} value={strike}>{strike}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="strikePrice"
+                  value={strikePrice}
+                  onChange={(e) => setStrikePrice(e.target.value)}
+                  placeholder="Enter strike price"
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="optionType">Option Type</Label>
