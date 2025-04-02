@@ -53,11 +53,38 @@ const AuthContext = createContext<AuthContextType>({
   getPendingRequests: () => [],
 });
 
-// Mock user database for demonstration - in a real app, this would be a real API
-const MOCK_USERS = [
-  { id: "1", name: "Admin User", email: "admin@example.com", password: "password123", role: "admin", isMainAdmin: true },
-  { id: "2", name: "Client User", email: "client@example.com", password: "password123", role: "client" },
-];
+// Load initial data from localStorage
+const loadMockUsers = () => {
+  const storedUsers = localStorage.getItem("mockUsers");
+  if (storedUsers) {
+    try {
+      return JSON.parse(storedUsers);
+    } catch (error) {
+      console.error("Failed to parse stored users", error);
+    }
+  }
+  // Default mock users
+  return [
+    { id: "1", name: "Admin User", email: "admin@example.com", password: "password123", role: "admin", isMainAdmin: true },
+    { id: "2", name: "Client User", email: "client@example.com", password: "password123", role: "client" },
+  ];
+};
+
+// Load initial access requests from localStorage
+const loadAccessRequests = () => {
+  const storedRequests = localStorage.getItem("accessRequests");
+  if (storedRequests) {
+    try {
+      return JSON.parse(storedRequests);
+    } catch (error) {
+      console.error("Failed to parse stored access requests", error);
+    }
+  }
+  return [];
+};
+
+// Mock users database with persistence
+const MOCK_USERS = loadMockUsers();
 
 // Mock clients database with ownership information
 const MOCK_CLIENTS = [
@@ -103,13 +130,25 @@ const MOCK_CLIENTS = [
   },
 ];
 
-// Mock access requests
-const MOCK_ACCESS_REQUESTS: AccessRequest[] = [];
+// Save MOCK_CLIENTS to localStorage
+const saveClientsData = () => {
+  localStorage.setItem("mockClients", JSON.stringify(MOCK_CLIENTS));
+};
+
+// Initialize clients data in localStorage if not already present
+if (!localStorage.getItem("mockClients")) {
+  saveClientsData();
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(MOCK_ACCESS_REQUESTS);
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(loadAccessRequests());
+
+  // Save access requests to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("accessRequests", JSON.stringify(accessRequests));
+  }, [accessRequests]);
 
   // Check if user is already logged in via localStorage
   useEffect(() => {
@@ -124,6 +163,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setIsLoading(false);
   }, []);
+
+  // Save MOCK_USERS to localStorage whenever they change
+  const saveMockUsers = () => {
+    localStorage.setItem("mockUsers", JSON.stringify(MOCK_USERS));
+  };
 
   // Login function
   const login = async (email: string, password: string, rememberMe: boolean) => {
@@ -140,9 +184,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { password, ...userWithoutPassword } = foundUser;
         setUser(userWithoutPassword);
         
-        if (rememberMe) {
-          localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-        }
+        // Always save user to localStorage to persist login across page refreshes
+        localStorage.setItem("user", JSON.stringify(userWithoutPassword));
         
         toast.success("Login successful!");
       } else {
@@ -182,6 +225,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Add to mock database (this is just for demonstration)
         MOCK_USERS.push(newUser);
+        // Save updated users to localStorage
+        saveMockUsers();
         
         // Remove password from user object before storing
         const { password: _, ...userWithoutPassword } = newUser;
@@ -229,6 +274,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Add to mock database (this is just for demonstration)
         MOCK_USERS.push(newUser);
+        // Save updated users to localStorage
+        saveMockUsers();
         
         toast.success("Sub-admin created successfully!");
       }
