@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, X, CurrencyRupee } from "lucide-react";
+import { PlusCircle, X, IndianRupee } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock clients data
@@ -166,7 +166,7 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
               <div key={target.id} className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <CurrencyRupee className="h-4 w-4 text-gray-400" />
+                    <IndianRupee className="h-4 w-4 text-gray-400" />
                   </div>
                   <Input 
                     value={target.price} 
