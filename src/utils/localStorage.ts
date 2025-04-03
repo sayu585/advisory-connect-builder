@@ -84,6 +84,13 @@ export const loadUsers = (): any[] => {
   }
 };
 
+export const addUser = (user: any) => {
+  const users = loadUsers();
+  users.push(user);
+  saveUsers(users);
+  return users;
+};
+
 export const updateUser = (userId: string, userData: any) => {
   const users = loadUsers();
   const index = users.findIndex(user => user.id === userId);
@@ -134,6 +141,32 @@ export const loadClients = (): any[] => {
     console.error('Failed to parse clients from localStorage', error);
     return [];
   }
+};
+
+export const addClient = (client: any) => {
+  const clients = loadClients();
+  clients.push(client);
+  saveClients(clients);
+  return clients;
+};
+
+export const updateClient = (clientId: string, clientData: any) => {
+  const clients = loadClients();
+  const index = clients.findIndex(client => client.id === clientId);
+  
+  if (index !== -1) {
+    clients[index] = { ...clients[index], ...clientData };
+    saveClients(clients);
+  }
+  
+  return clients;
+};
+
+export const deleteClient = (clientId: string) => {
+  const clients = loadClients();
+  const filteredClients = clients.filter(client => client.id !== clientId);
+  saveClients(filteredClients);
+  return filteredClients;
 };
 
 // Client subscriptions

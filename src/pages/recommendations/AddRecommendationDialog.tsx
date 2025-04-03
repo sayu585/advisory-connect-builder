@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,15 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle, X, IndianRupee, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, IndianRupee } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
-
-// Mock clients data
-const mockClients = [
-  { id: "1", name: "John Doe" },
-  { id: "2", name: "Jane Smith" },
-  { id: "3", name: "Robert Johnson" },
-];
+import { loadClients, loadSubscriptions } from "@/utils/localStorage";
 
 // Market segments
 const marketSegments = [
@@ -38,13 +32,6 @@ const marketSegments = [
   "Currency"
 ];
 
-// Strike prices for options (example)
-const strikeOptions = {
-  "Nifty Options": ["18000", "18100", "18200", "18300", "18400", "18500", "18600", "18700"],
-  "Bank Nifty Options": ["40000", "40500", "41000", "41500", "42000", "42500", "43000"],
-  "Reliance Options": ["2400", "2450", "2500", "2550", "2600", "2650", "2700"]
-};
-
 interface Target {
   id: string;
   price: string;
@@ -53,18 +40,7 @@ interface Target {
 interface AddRecommendationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (recommendation: {
-    title: string;
-    segment: string;
-    instrument: string;
-    strikePrice?: string;
-    optionType?: string;
-    description: string;
-    entryPrice: string;
-    stopLoss: string;
-    targets: { price: string }[];
-    clientsAssigned: string[];
-  }) => void;
+  onSubmit: (recommendation: any) => void;
 }
 
 const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({ 
@@ -83,7 +59,11 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
   const [targets, setTargets] = useState<Target[]>([
     { id: uuidv4(), price: "" }
   ]);
+  const [subscriptionId, setSubscriptionId] = useState("default");
   const [clientsAssigned, setClientsAssigned] = useState<string[]>([]);
+  
+  const clients = loadClients();
+  const subscriptions = loadSubscriptions();
 
   const handleAddTarget = () => {
     setTargets([...targets, { id: uuidv4(), price: "" }]);
@@ -110,22 +90,43 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
   };
 
   const handleSubmit = () => {
-    // Format targets
-    const formattedTargets = targets.map(target => ({
-      price: target.price
-    }));
+    // Format targets with timeframe
+    const formattedTargets = targets.map((target, index) => ({
+      id: target.id,
+      price: parseFloat(target.price),
+      timeframe: index === 0 ? "Short-term" : index === 1 ? "Medium-term" : "Long-term"
+    })).filter(target => !isNaN(target.price));
+
+    // Calculate which clients to assign based on selected subscription
+    let allAssignedClients = [...clientsAssigned];
+    
+    // Add clients that have this subscription
+    const clientsWithThisSubscription = clients
+      .filter(client => client.subscriptionId === subscriptionId)
+      .map(client => client.id);
+    
+    clientsWithThisSubscription.forEach(clientId => {
+      if (!allAssignedClients.includes(clientId)) {
+        allAssignedClients.push(clientId);
+      }
+    });
 
     // Create recommendation object
     const recommendation = {
+      id: uuidv4(),
       title,
-      segment,
-      instrument,
-      ...(segment === "Options" && { strikePrice, optionType }),
+      type: segment || "Stock",
       description,
-      entryPrice,
-      stopLoss,
+      entryPrice: parseFloat(entryPrice),
+      stopLoss: parseFloat(stopLoss),
       targets: formattedTargets,
-      clientsAssigned
+      status: "Active",
+      createdAt: new Date().toISOString(),
+      subscriptionIds: [subscriptionId],
+      clientsAssigned: allAssignedClients,
+      clientsAcknowledged: [],
+      // For options specific fields
+      ...(segment === "Options" && { strikePrice, optionType }),
     };
 
     onSubmit(recommendation);
@@ -145,10 +146,16 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
     setEntryPrice("");
     setStopLoss("");
     setTargets([{ id: uuidv4(), price: "" }]);
+    setSubscriptionId("default");
     setClientsAssigned([]);
   };
 
   const showStrikePriceAndType = segment === "Options";
+
+  // Filter clients by selected subscription
+  const subscribedClients = clients.filter(client => 
+    client.subscriptionId === subscriptionId
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,22 +322,51 @@ const AddRecommendationDialog: React.FC<AddRecommendationDialogProps> = ({
             ))}
           </div>
           
+          {/* Subscription Selection */}
           <div className="grid gap-2">
-            <Label>Assign Clients</Label>
-            <div className="border rounded-md p-3 space-y-2">
-              {mockClients.map((client) => (
-                <div key={client.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`client-${client.id}`}
-                    checked={clientsAssigned.includes(client.id)}
-                    onChange={() => handleToggleClient(client.id)}
-                    className="mr-2"
-                  />
-                  <Label htmlFor={`client-${client.id}`}>{client.name}</Label>
-                </div>
-              ))}
-            </div>
+            <Label htmlFor="subscription">Assign to Subscription</Label>
+            <Select value={subscriptionId} onValueChange={setSubscriptionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select subscription" />
+              </SelectTrigger>
+              <SelectContent>
+                {subscriptions.map((sub: any) => (
+                  <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              All clients with this subscription will see this recommendation
+            </p>
+          </div>
+          
+          {/* Additional Client Selection */}
+          <div className="grid gap-2">
+            <Label>Additional Clients</Label>
+            {clients.length > 0 ? (
+              <div className="border rounded-md p-3 space-y-2">
+                {clients.map((client) => (
+                  <div key={client.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`client-${client.id}`}
+                      checked={clientsAssigned.includes(client.id) || client.subscriptionId === subscriptionId}
+                      disabled={client.subscriptionId === subscriptionId}
+                      onChange={() => handleToggleClient(client.id)}
+                      className="mr-2"
+                    />
+                    <Label htmlFor={`client-${client.id}`}>
+                      {client.name} 
+                      {client.subscriptionId === subscriptionId && (
+                        <span className="text-xs text-muted-foreground ml-2">(via subscription)</span>
+                      )}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No clients available</p>
+            )}
           </div>
         </div>
         <DialogFooter>

@@ -23,13 +23,12 @@ import {
 } from "@/components/ui/table";
 import AddRecommendationDialog from "./AddRecommendationDialog";
 import RecommendationDetails from "./RecommendationDetails";
+import EditRecommendationDialog from "./EditRecommendationDialog";
 import { loadRecommendations, saveRecommendations, deleteRecommendation as deleteRecommendationFromStorage } from "@/utils/localStorage";
-import { v4 as uuidv4 } from 'uuid';
-import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 const Recommendations = () => {
-  const { user, hasAccessToClient } = useAuth();
+  const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -40,23 +39,24 @@ const Recommendations = () => {
 
   // Load recommendations from localStorage on component mount
   useEffect(() => {
-    setRecommendations(loadRecommendations());
+    const loadedRecommendations = loadRecommendations();
+    setRecommendations(loadedRecommendations);
   }, []);
 
+  // Filter recommendations for client view
+  // For clients, show all recommendations but only detailed info for assigned ones
+  const filteredRecommendations = isAdmin 
+    ? recommendations 
+    : recommendations.filter(rec => 
+        rec.clientsAssigned?.includes(user?.id) || true // Show all but with limited info for non-assigned
+      );
+
   const handleAddRecommendation = (newRecommendation: any) => {
-    const recommendationWithId = {
-      ...newRecommendation,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      status: "Active",
-      clientsAcknowledged: [],
-      clientsAssigned: newRecommendation.clientsAssigned || [],
-    };
-    
-    const updatedRecommendations = [recommendationWithId, ...recommendations];
+    const updatedRecommendations = [newRecommendation, ...recommendations];
     setRecommendations(updatedRecommendations);
     saveRecommendations(updatedRecommendations);
     setIsAddDialogOpen(false);
+    toast.success("Recommendation added successfully");
   };
 
   const handleViewRecommendation = (recommendation: any) => {
@@ -101,6 +101,7 @@ const Recommendations = () => {
       deleteRecommendationFromStorage(selectedRecommendation.id);
       setIsDeleteDialogOpen(false);
       setSelectedRecommendation(null);
+      toast.success("Recommendation deleted successfully");
     }
   };
 
@@ -119,6 +120,17 @@ const Recommendations = () => {
     
     setRecommendations(updatedRecommendations);
     saveRecommendations(updatedRecommendations);
+    toast.success("Recommendation acknowledged");
+  };
+
+  // Determine if a client is assigned to view full details
+  const isAssigned = (recommendation: any) => {
+    return user ? recommendation.clientsAssigned?.includes(user.id) : false;
+  };
+
+  // Check if a client has acknowledged the recommendation
+  const hasAcknowledged = (recommendation: any) => {
+    return user ? recommendation.clientsAcknowledged?.includes(user.id) : false;
   };
 
   return (
@@ -147,24 +159,26 @@ const Recommendations = () => {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Target(s)</TableHead>
+                  {isAdmin && <TableHead>Targets</TableHead>}
                   <TableHead>Status</TableHead>
                   {isAdmin && <TableHead>Acknowledged</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recommendations.map((recommendation) => (
+                {filteredRecommendations.map((recommendation) => (
                   <TableRow key={recommendation.id}>
                     <TableCell className="font-medium">{recommendation.title}</TableCell>
                     <TableCell>{recommendation.type}</TableCell>
-                    <TableCell>
-                      {recommendation.targets && recommendation.targets.map((target: any, idx: number) => (
-                        <div key={target.id} className="text-sm">
-                          Target {idx + 1}: ₹{target.price} ({target.timeframe})
-                        </div>
-                      ))}
-                    </TableCell>
+                    {isAdmin && (
+                      <TableCell>
+                        {recommendation.targets && recommendation.targets.map((target: any, idx: number) => (
+                          <div key={target.id} className="text-sm">
+                            Target {idx + 1}: ₹{target.price} ({target.timeframe})
+                          </div>
+                        ))}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
                         {recommendation.status}
@@ -181,6 +195,7 @@ const Recommendations = () => {
                           variant="outline" 
                           size="icon" 
                           onClick={() => handleViewRecommendation(recommendation)}
+                          title="View Details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -190,6 +205,7 @@ const Recommendations = () => {
                               variant="outline" 
                               size="icon" 
                               onClick={() => handleEditRecommendation(recommendation)}
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -197,23 +213,27 @@ const Recommendations = () => {
                               variant="outline" 
                               size="icon" 
                               onClick={() => handleDeleteClick(recommendation)}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </>
                         ) : (
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => handleAcknowledge(recommendation.id)}
-                            disabled={recommendation.clientsAcknowledged?.includes(user?.id || "")}
-                          >
-                            {recommendation.clientsAcknowledged?.includes(user?.id || "") ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <AlertCircle className="h-4 w-4" />
-                            )}
-                          </Button>
+                          isAssigned(recommendation) && (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              onClick={() => handleAcknowledge(recommendation.id)}
+                              disabled={hasAcknowledged(recommendation)}
+                              title={hasAcknowledged(recommendation) ? "Acknowledged" : "Acknowledge"}
+                            >
+                              {hasAcknowledged(recommendation) ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>
@@ -257,7 +277,7 @@ const Recommendations = () => {
             recommendation={selectedRecommendation}
             isAdmin={isAdmin}
             onAcknowledge={() => handleAcknowledge(selectedRecommendation.id)}
-            hasAcknowledged={selectedRecommendation.clientsAcknowledged?.includes(user?.id || "")}
+            hasAcknowledged={hasAcknowledged(selectedRecommendation)}
           />
 
           <EditRecommendationDialog
