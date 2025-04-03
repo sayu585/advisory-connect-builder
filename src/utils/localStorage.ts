@@ -104,12 +104,12 @@ export const updateUser = (userId: string, userData: any) => {
 };
 
 export const saveCurrentUser = (user: any) => {
-  localStorage.setItem('user', JSON.stringify(user));
+  localStorage.setItem('currentUser', JSON.stringify(user));
 };
 
 export const loadCurrentUser = (): any | null => {
   try {
-    const storedData = localStorage.getItem('user');
+    const storedData = localStorage.getItem('currentUser');
     return storedData ? JSON.parse(storedData) : null;
   } catch (error) {
     console.error('Failed to parse current user from localStorage', error);
@@ -118,7 +118,7 @@ export const loadCurrentUser = (): any | null => {
 };
 
 export const clearCurrentUser = () => {
-  localStorage.removeItem('user');
+  localStorage.removeItem('currentUser');
 };
 
 // Client data
@@ -134,6 +134,49 @@ export const loadClients = (): any[] => {
     console.error('Failed to parse clients from localStorage', error);
     return [];
   }
+};
+
+// Client subscriptions
+export const saveSubscriptions = (subscriptions: any[]) => {
+  localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+};
+
+export const loadSubscriptions = (): any[] => {
+  try {
+    const storedData = localStorage.getItem('subscriptions');
+    return storedData ? JSON.parse(storedData) : [
+      { id: "default", name: "Default", description: "Default subscription" }
+    ];
+  } catch (error) {
+    console.error('Failed to parse subscriptions from localStorage', error);
+    return [{ id: "default", name: "Default", description: "Default subscription" }];
+  }
+};
+
+export const addSubscription = (subscription: any) => {
+  const subscriptions = loadSubscriptions();
+  subscriptions.push(subscription);
+  saveSubscriptions(subscriptions);
+  return subscriptions;
+};
+
+export const updateSubscription = (id: string, updatedSubscription: any) => {
+  const subscriptions = loadSubscriptions();
+  const index = subscriptions.findIndex(sub => sub.id === id);
+  
+  if (index !== -1) {
+    subscriptions[index] = { ...subscriptions[index], ...updatedSubscription };
+    saveSubscriptions(subscriptions);
+  }
+  
+  return subscriptions;
+};
+
+export const deleteSubscription = (id: string) => {
+  const subscriptions = loadSubscriptions();
+  const filteredSubscriptions = subscriptions.filter(sub => sub.id !== id);
+  saveSubscriptions(filteredSubscriptions);
+  return filteredSubscriptions;
 };
 
 // Access requests

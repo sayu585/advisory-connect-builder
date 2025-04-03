@@ -25,6 +25,8 @@ import AddRecommendationDialog from "./AddRecommendationDialog";
 import RecommendationDetails from "./RecommendationDetails";
 import { loadRecommendations, saveRecommendations, deleteRecommendation as deleteRecommendationFromStorage } from "@/utils/localStorage";
 import { v4 as uuidv4 } from 'uuid';
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 const Recommendations = () => {
   const { user, hasAccessToClient } = useAuth();
@@ -34,6 +36,7 @@ const Recommendations = () => {
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Load recommendations from localStorage on component mount
   useEffect(() => {
@@ -62,8 +65,27 @@ const Recommendations = () => {
   };
 
   const handleEditRecommendation = (recommendation: any) => {
-    // In a real app, this would open an edit form pre-populated with the recommendation data
-    console.log("Edit recommendation", recommendation);
+    setSelectedRecommendation(recommendation);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateRecommendation = (updatedData: any) => {
+    if (!selectedRecommendation) return;
+
+    const updatedRecommendation = {
+      ...selectedRecommendation,
+      ...updatedData,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const updatedRecommendations = recommendations.map(rec => 
+      rec.id === selectedRecommendation.id ? updatedRecommendation : rec
+    );
+
+    setRecommendations(updatedRecommendations);
+    saveRecommendations(updatedRecommendations);
+    setIsEditDialogOpen(false);
+    toast.success("Recommendation updated successfully");
   };
 
   const handleDeleteClick = (recommendation: any) => {
@@ -99,17 +121,6 @@ const Recommendations = () => {
     saveRecommendations(updatedRecommendations);
   };
 
-  // Filter recommendations based on client access for sub-admins
-  const filteredRecommendations = recommendations.filter(rec => {
-    if (!isAdmin) return true; // Clients can see all their recommendations
-    
-    // Check if main admin
-    if (user?.isMainAdmin) return true;
-    
-    // For sub-admins, check if they have access to any of the clients assigned to this recommendation
-    return rec.clientsAssigned && rec.clientsAssigned.some((clientId: string) => hasAccessToClient(clientId));
-  });
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -128,7 +139,7 @@ const Recommendations = () => {
         )}
       </div>
 
-      {filteredRecommendations.length > 0 ? (
+      {recommendations.length > 0 ? (
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -143,7 +154,7 @@ const Recommendations = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecommendations.map((recommendation) => (
+                {recommendations.map((recommendation) => (
                   <TableRow key={recommendation.id}>
                     <TableCell className="font-medium">{recommendation.title}</TableCell>
                     <TableCell>{recommendation.type}</TableCell>
@@ -239,14 +250,23 @@ const Recommendations = () => {
       />
 
       {selectedRecommendation && (
-        <RecommendationDetails
-          open={isViewDialogOpen}
-          onOpenChange={setIsViewDialogOpen}
-          recommendation={selectedRecommendation}
-          isAdmin={isAdmin}
-          onAcknowledge={() => handleAcknowledge(selectedRecommendation.id)}
-          hasAcknowledged={selectedRecommendation.clientsAcknowledged?.includes(user?.id || "")}
-        />
+        <>
+          <RecommendationDetails
+            open={isViewDialogOpen}
+            onOpenChange={setIsViewDialogOpen}
+            recommendation={selectedRecommendation}
+            isAdmin={isAdmin}
+            onAcknowledge={() => handleAcknowledge(selectedRecommendation.id)}
+            hasAcknowledged={selectedRecommendation.clientsAcknowledged?.includes(user?.id || "")}
+          />
+
+          <EditRecommendationDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            recommendation={selectedRecommendation}
+            onSubmit={handleUpdateRecommendation}
+          />
+        </>
       )}
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

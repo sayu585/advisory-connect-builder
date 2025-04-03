@@ -19,6 +19,7 @@ import Clients from "./pages/clients/Clients";
 import Profile from "./pages/profile/Profile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
 import AdminManagement from "./pages/admin/AdminManagement";
+import SubscriptionManagement from "./pages/subscriptions/SubscriptionManagement";
 import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -80,12 +81,13 @@ const AppRoutes = () => {
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/recommendations" element={<Recommendations />} />
-        <Route path="/clients" element={<Clients />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* Admin routes */}
       <Route element={<MainLayout allowedRoles={["admin"]} />}>
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/subscriptions" element={<SubscriptionManagement />} />
         <Route path="/admin/users" element={<div>User Management (Admin Only)</div>} />
         <Route path="/admin/management" element={<AdminManagement />} />
       </Route>

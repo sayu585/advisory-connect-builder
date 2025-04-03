@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, MoreVertical, UserPlus, Pencil, Trash2, LockKeyhole } from "lucide-react";
+import { PlusCircle, Search, MoreVertical, UserPlus, Pencil, Trash2, LockKeyhole, Tags } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
@@ -23,17 +23,26 @@ import {
 } from "@/components/ui/table";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-import { loadClients, saveClients } from "@/utils/localStorage";
+import { loadClients, saveClients, loadSubscriptions } from "@/utils/localStorage";
 import { v4 as uuidv4 } from 'uuid';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Clients = () => {
   const { user, isMainAdmin, hasAccessToClient, requestClientAccess } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [clients, setClients] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
+  const [isEditClientDialogOpen, setIsEditClientDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
-  // Load clients from localStorage
+  // Load clients and subscriptions from localStorage
   useEffect(() => {
     setClients(loadClients());
+    setSubscriptions(loadSubscriptions());
   }, []);
 
   // Redirect if not admin
@@ -44,8 +53,8 @@ const Clients = () => {
   // Filter clients based on search query and access permissions
   const filteredClients = clients.filter(
     client => {
-      const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = client.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email?.toLowerCase().includes(searchQuery.toLowerCase());
       
       // Main admin can see all clients
       if (isMainAdmin()) return matchesSearch;
@@ -59,15 +68,14 @@ const Clients = () => {
   const hasInaccessibleClients = !isMainAdmin() && 
     clients.some(client => !hasAccessToClient(client.id));
 
-  const handleAddClient = () => {
-    // In a real app, this would open a dialog to add a new client
-    // For now, let's just create a placeholder client
+  const handleAddClientSubmit = (data: any) => {
     const newClient = {
       id: uuidv4(),
-      name: `New Client ${clients.length + 1}`,
-      email: `client${clients.length + 1}@example.com`,
-      phone: "555-000-0000",
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
       status: "Active",
+      subscriptionId: data.subscriptionId,
       recommendationsAssigned: 0,
       recommendationsAcknowledged: 0,
       ownerId: user?.id || "1" // Default to current user or main admin
@@ -76,7 +84,24 @@ const Clients = () => {
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);
     saveClients(updatedClients);
+    setIsAddClientDialogOpen(false);
     toast.success("New client added");
+  };
+
+  const handleEditClient = (client: any) => {
+    setSelectedClient(client);
+    setIsEditClientDialogOpen(true);
+  };
+
+  const handleEditClientSubmit = (data: any) => {
+    const updatedClients = clients.map(client => 
+      client.id === selectedClient.id ? { ...client, ...data } : client
+    );
+    
+    setClients(updatedClients);
+    saveClients(updatedClients);
+    setIsEditClientDialogOpen(false);
+    toast.success("Client updated successfully");
   };
 
   const handleDeleteClient = (clientId: string) => {
@@ -86,14 +111,15 @@ const Clients = () => {
     toast.success("Client deleted");
   };
 
-  const handleEditClient = (client: any) => {
-    toast.info(`Editing ${client.name}`);
-    // In a real app, this would open a dialog to edit the client
-  };
-
   const handleAssignRecommendation = (client: any) => {
     toast.info(`Assigning recommendation to ${client.name}`);
     // In a real app, this would open a dialog to assign a recommendation
+  };
+
+  // Get subscription name by ID
+  const getSubscriptionName = (subscriptionId: string) => {
+    const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+    return subscription ? subscription.name : "None";
   };
 
   return (
@@ -105,7 +131,7 @@ const Clients = () => {
             Manage your client relationships and track their advisory progress
           </p>
         </div>
-        <Button onClick={handleAddClient}>
+        <Button onClick={() => setIsAddClientDialogOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" /> Add Client
         </Button>
       </div>
@@ -139,6 +165,7 @@ const Clients = () => {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
+              <TableHead>Subscription</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Recommendations</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -151,6 +178,7 @@ const Clients = () => {
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.email}</TableCell>
                   <TableCell>{client.phone}</TableCell>
+                  <TableCell>{getSubscriptionName(client.subscriptionId)}</TableCell>
                   <TableCell>
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
@@ -163,7 +191,7 @@ const Clients = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {client.recommendationsAcknowledged}/{client.recommendationsAssigned}
+                    {client.recommendationsAcknowledged || 0}/{client.recommendationsAssigned || 0}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -208,7 +236,7 @@ const Clients = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No clients found
                 </TableCell>
               </TableRow>
@@ -216,7 +244,160 @@ const Clients = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Add Client Dialog */}
+      <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Client</DialogTitle>
+            <DialogDescription>Enter client details and assign a subscription.</DialogDescription>
+          </DialogHeader>
+
+          <AddEditClientForm 
+            onSubmit={handleAddClientSubmit} 
+            subscriptions={subscriptions}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Client Dialog */}
+      {selectedClient && (
+        <Dialog open={isEditClientDialogOpen} onOpenChange={setIsEditClientDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Client</DialogTitle>
+              <DialogDescription>Update client details.</DialogDescription>
+            </DialogHeader>
+
+            <AddEditClientForm 
+              onSubmit={handleEditClientSubmit} 
+              subscriptions={subscriptions}
+              defaultValues={selectedClient}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
+  );
+};
+
+// Reusable form for both adding and editing clients
+const AddEditClientForm = ({ 
+  onSubmit, 
+  subscriptions, 
+  defaultValues = { 
+    name: '', 
+    email: '', 
+    phone: '', 
+    subscriptionId: 'default',
+    status: 'Active'
+  } 
+}: { 
+  onSubmit: (data: any) => void, 
+  subscriptions: any[],
+  defaultValues?: any
+}) => {
+  const form = useForm({
+    defaultValues
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Client name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="Email address" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input placeholder="Phone number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="subscriptionId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Subscription</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subscription" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {subscriptions.map((sub) => (
+                    <SelectItem key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <DialogFooter>
+          <Button type="submit">{defaultValues.id ? 'Update Client' : 'Add Client'}</Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 };
 
