@@ -27,6 +27,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 0, // Disable query caching to ensure fresh data on refreshes
       refetchOnWindowFocus: true, // Refetch when window gets focus
+      refetchOnMount: true, // Make sure data refreshes when component mounts
     },
   },
 });

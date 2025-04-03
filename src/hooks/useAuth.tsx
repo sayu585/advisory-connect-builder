@@ -64,6 +64,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(loadAccessRequests());
 
+  // Refresh data on tab focus to ensure synced state
+  useEffect(() => {
+    const handleTabFocus = () => {
+      const storedUser = loadCurrentUser();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+      setAccessRequests(loadAccessRequests());
+    };
+
+    window.addEventListener('focus', handleTabFocus);
+    return () => {
+      window.removeEventListener('focus', handleTabFocus);
+    };
+  }, []);
+
   useEffect(() => {
     saveAccessRequests(accessRequests);
   }, [accessRequests]);
@@ -87,8 +103,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (foundUser) {
         const { password, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        saveCurrentUser(userWithoutPassword);
+        // Add timestamp for tracking most recent login
+        const userWithTimestamp = {
+          ...userWithoutPassword,
+          lastLoginTime: Date.now()
+        };
+        setUser(userWithTimestamp);
+        saveCurrentUser(userWithTimestamp);
         toast.success("Login successful!");
       } else {
         toast.error("Invalid email or password");

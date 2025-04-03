@@ -1,10 +1,17 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 
 const Unauthorized = () => {
+  const navigate = useNavigate();
+  
+  // Go back to previous page
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
       <div className="text-center max-w-md">
@@ -15,11 +22,11 @@ const Unauthorized = () => {
           your administrator if you believe this is an error.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild>
-            <Link to="/dashboard">Go to Dashboard</Link>
+          <Button onClick={handleGoBack}>
+            Go Back
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/">Return to Home</Link>
+            <Link to="/dashboard">Go to Dashboard</Link>
           </Button>
         </div>
       </div>

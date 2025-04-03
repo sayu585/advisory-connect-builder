@@ -1,41 +1,73 @@
-
 // Helper functions for storing and retrieving data from localStorage
+
+// Generate a unique session key for each browser tab
+const getTabSessionId = () => {
+  if (!sessionStorage.getItem('tabSessionId')) {
+    sessionStorage.setItem('tabSessionId', `tab-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`);
+  }
+  return sessionStorage.getItem('tabSessionId');
+};
 
 // Session Management
 export const saveCurrentUser = (user: any) => {
-  const sessionKey = `currentUser_${user.id}`;
-  localStorage.setItem(sessionKey, JSON.stringify(user));
-  // Also store the last active user ID
-  localStorage.setItem('lastActiveUser', user.id);
+  // Use sessionStorage instead of localStorage for user session
+  // This ensures each tab has its own isolated session
+  const sessionKey = `currentUser_${getTabSessionId()}`;
+  sessionStorage.setItem(sessionKey, JSON.stringify(user));
+  
+  // Still store the user session in localStorage for persistent login between visits
+  const persistentKey = `persistentUser_${user.id}`;
+  localStorage.setItem(persistentKey, JSON.stringify(user));
 };
 
 export const loadCurrentUser = (): any | null => {
   try {
-    // Get the last active user ID
-    const lastActiveUserId = localStorage.getItem('lastActiveUser');
-    if (!lastActiveUserId) return null;
+    // First try to get from session storage (tab-specific)
+    const sessionKey = `currentUser_${getTabSessionId()}`;
+    const sessionData = sessionStorage.getItem(sessionKey);
     
-    // Load that specific user's session
-    const sessionKey = `currentUser_${lastActiveUserId}`;
-    const storedData = localStorage.getItem(sessionKey);
-    return storedData ? JSON.parse(storedData) : null;
+    if (sessionData) {
+      return JSON.parse(sessionData);
+    }
+    
+    // If not in session storage, check for persistent login in localStorage
+    // Get the latest persistent user
+    const localStorageKeys = Object.keys(localStorage);
+    const persistentUserKeys = localStorageKeys.filter(key => key.startsWith('persistentUser_'));
+    
+    if (persistentUserKeys.length > 0) {
+      const latestUser = persistentUserKeys
+        .map(key => ({ key, user: JSON.parse(localStorage.getItem(key) || '{}') }))
+        .sort((a, b) => (b.user.lastLoginTime || 0) - (a.user.lastLoginTime || 0))[0];
+      
+      if (latestUser && latestUser.user) {
+        // Save to this tab's session
+        saveCurrentUser(latestUser.user);
+        return latestUser.user;
+      }
+    }
+    
+    return null;
   } catch (error) {
-    console.error('Failed to parse current user from localStorage', error);
+    console.error('Failed to parse current user from storage', error);
     return null;
   }
 };
 
 export const clearCurrentUser = () => {
-  // Clear only the current user's session
-  const lastActiveUserId = localStorage.getItem('lastActiveUser');
-  if (lastActiveUserId) {
-    const sessionKey = `currentUser_${lastActiveUserId}`;
-    localStorage.removeItem(sessionKey);
+  // Clear session-specific user data
+  const sessionKey = `currentUser_${getTabSessionId()}`;
+  sessionStorage.removeItem(sessionKey);
+  
+  // Also clear from localStorage if needed
+  const user = loadCurrentUser();
+  if (user && user.id) {
+    const persistentKey = `persistentUser_${user.id}`;
+    localStorage.removeItem(persistentKey);
   }
-  localStorage.removeItem('lastActiveUser');
 };
 
-// Recommendations
+// Recommendations - keep these using localStorage for persistence across tabs
 export const saveRecommendations = (recommendations: any[]) => {
   localStorage.setItem('recommendations', JSON.stringify(recommendations));
 };
@@ -137,6 +169,8 @@ export const updateUser = (userId: string, userData: any) => {
     const currentUser = loadCurrentUser();
     if (currentUser && currentUser.id === userId) {
       const { password, ...userWithoutPassword } = users[index];
+      // Add timestamp for login tracking
+      userWithoutPassword.lastLoginTime = Date.now();
       saveCurrentUser({ ...userWithoutPassword });
     }
   }
