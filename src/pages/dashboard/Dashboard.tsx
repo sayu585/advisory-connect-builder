@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -107,23 +108,25 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card 
-          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-          onClick={() => handleCardClick(isAdmin ? "/clients" : "", "Total Clients")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Clients
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isAdmin ? clientCount : "-"}</div>
-            <p className="text-xs text-muted-foreground">
-              {isAdmin ? "Manage all your clients" : "Contact your admin for details"}
-            </p>
-          </CardContent>
-        </Card>
+        {isAdmin && (
+          <Card 
+            className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+            onClick={() => handleCardClick(isAdmin ? "/clients" : "", "Total Clients")}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Clients
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{clientCount}</div>
+              <p className="text-xs text-muted-foreground">
+                Manage all your clients
+              </p>
+            </CardContent>
+          </Card>
+        )}
         <Card 
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
           onClick={() => handleCardClick("/recommendations", "Active Recommendations")}

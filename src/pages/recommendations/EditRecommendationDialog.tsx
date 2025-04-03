@@ -332,7 +332,7 @@ const EditRecommendationDialog = ({
               )}
             />
 
-            <DialogFooter>
+            <DialogFooter className="flex justify-between items-center pt-4">
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

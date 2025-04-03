@@ -1,3 +1,4 @@
+
 // Helper functions for storing and retrieving data from localStorage
 
 // Session Management
