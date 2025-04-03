@@ -22,7 +22,14 @@ import AdminManagement from "./pages/admin/AdminManagement";
 import SubscriptionManagement from "./pages/subscriptions/SubscriptionManagement";
 import { useAuth } from "./hooks/useAuth";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0, // Disable query caching to ensure fresh data on refreshes
+      refetchOnWindowFocus: true, // Refetch when window gets focus
+    },
+  },
+});
 
 // This component handles protected routes and redirects
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

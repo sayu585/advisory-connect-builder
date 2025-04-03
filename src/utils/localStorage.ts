@@ -1,5 +1,38 @@
-
 // Helper functions for storing and retrieving data from localStorage
+
+// Session Management
+export const saveCurrentUser = (user: any) => {
+  const sessionKey = `currentUser_${user.id}`;
+  localStorage.setItem(sessionKey, JSON.stringify(user));
+  // Also store the last active user ID
+  localStorage.setItem('lastActiveUser', user.id);
+};
+
+export const loadCurrentUser = (): any | null => {
+  try {
+    // Get the last active user ID
+    const lastActiveUserId = localStorage.getItem('lastActiveUser');
+    if (!lastActiveUserId) return null;
+    
+    // Load that specific user's session
+    const sessionKey = `currentUser_${lastActiveUserId}`;
+    const storedData = localStorage.getItem(sessionKey);
+    return storedData ? JSON.parse(storedData) : null;
+  } catch (error) {
+    console.error('Failed to parse current user from localStorage', error);
+    return null;
+  }
+};
+
+export const clearCurrentUser = () => {
+  // Clear only the current user's session
+  const lastActiveUserId = localStorage.getItem('lastActiveUser');
+  if (lastActiveUserId) {
+    const sessionKey = `currentUser_${lastActiveUserId}`;
+    localStorage.removeItem(sessionKey);
+  }
+  localStorage.removeItem('lastActiveUser');
+};
 
 // Recommendations
 export const saveRecommendations = (recommendations: any[]) => {
@@ -108,24 +141,6 @@ export const updateUser = (userId: string, userData: any) => {
   }
   
   return users;
-};
-
-export const saveCurrentUser = (user: any) => {
-  localStorage.setItem('currentUser', JSON.stringify(user));
-};
-
-export const loadCurrentUser = (): any | null => {
-  try {
-    const storedData = localStorage.getItem('currentUser');
-    return storedData ? JSON.parse(storedData) : null;
-  } catch (error) {
-    console.error('Failed to parse current user from localStorage', error);
-    return null;
-  }
-};
-
-export const clearCurrentUser = () => {
-  localStorage.removeItem('currentUser');
 };
 
 // Client data

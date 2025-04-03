@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -18,11 +17,13 @@ const Dashboard = () => {
 
   const [showRequests, setShowRequests] = useState(false);
 
-  // Load data from localStorage
+  // Load data from localStorage and ensure it refreshes properly
   useEffect(() => {
-    setClients(loadClients());
-    setRecommendations(loadRecommendations());
-  }, []);
+    if (user) {
+      setClients(loadClients());
+      setRecommendations(loadRecommendations());
+    }
+  }, [user]);
 
   const handleCardClick = (destination: string, title: string) => {
     if (destination) {

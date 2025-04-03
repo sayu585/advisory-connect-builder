@@ -265,8 +265,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
+    if (user) {
+      clearCurrentUser();
+    }
     setUser(null);
-    clearCurrentUser();
     toast.success("Logged out successfully");
   };
 
