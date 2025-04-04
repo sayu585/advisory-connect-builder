@@ -1,18 +1,20 @@
 
 import axios from 'axios';
 
-// Base API URL
-const API_URL = 'http://localhost:5000/api';
+// Determine the API base URL based on the environment
+// This will use a relative URL in development mode,
+// which works better with frameworks like Vite
+const BASE_URL = '/api';
 
-// Create axios instance
+// Create an axios instance with a base URL
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Authentication Services
+// Auth services
 export const authService = {
   login: async (email: string, password: string) => {
     const response = await api.post('/login', { email, password });
@@ -27,38 +29,10 @@ export const authService = {
   updateUser: async (userId: string, userData: any) => {
     const response = await api.put(`/users/${userId}`, userData);
     return response.data;
-  },
-  
-  getUsers: async () => {
-    const response = await api.get('/users');
-    return response.data;
   }
 };
 
-// Recommendations Services
-export const recommendationService = {
-  getAll: async () => {
-    const response = await api.get('/recommendations');
-    return response.data;
-  },
-  
-  create: async (recommendationData: any) => {
-    const response = await api.post('/recommendations', recommendationData);
-    return response.data;
-  },
-  
-  update: async (id: string, recommendationData: any) => {
-    const response = await api.put(`/recommendations/${id}`, recommendationData);
-    return response.data;
-  },
-  
-  delete: async (id: string) => {
-    const response = await api.delete(`/recommendations/${id}`);
-    return response.data;
-  }
-};
-
-// Client Services
+// Client services
 export const clientService = {
   getAll: async () => {
     const response = await api.get('/clients');
@@ -70,18 +44,41 @@ export const clientService = {
     return response.data;
   },
   
-  update: async (id: string, clientData: any) => {
-    const response = await api.put(`/clients/${id}`, clientData);
+  update: async (clientId: string, clientData: any) => {
+    const response = await api.put(`/clients/${clientId}`, clientData);
     return response.data;
   },
   
-  delete: async (id: string) => {
-    const response = await api.delete(`/clients/${id}`);
+  delete: async (clientId: string) => {
+    const response = await api.delete(`/clients/${clientId}`);
     return response.data;
   }
 };
 
-// Access Request Services
+// Recommendation services
+export const recommendationService = {
+  getAll: async () => {
+    const response = await api.get('/recommendations');
+    return response.data;
+  },
+  
+  create: async (recommendationData: any) => {
+    const response = await api.post('/recommendations', recommendationData);
+    return response.data;
+  },
+  
+  update: async (recommendationId: string, recommendationData: any) => {
+    const response = await api.put(`/recommendations/${recommendationId}`, recommendationData);
+    return response.data;
+  },
+  
+  delete: async (recommendationId: string) => {
+    const response = await api.delete(`/recommendations/${recommendationId}`);
+    return response.data;
+  }
+};
+
+// Access request services
 export const accessRequestService = {
   getAll: async () => {
     const response = await api.get('/access-requests');
@@ -93,13 +90,13 @@ export const accessRequestService = {
     return response.data;
   },
   
-  update: async (id: string, requestData: any) => {
-    const response = await api.put(`/access-requests/${id}`, requestData);
+  update: async (requestId: string, requestData: any) => {
+    const response = await api.put(`/access-requests/${requestId}`, requestData);
     return response.data;
   }
 };
 
-// Notification Services
+// Notification service
 export const notificationService = {
   sendNotification: async (notificationData: any) => {
     const response = await api.post('/notifications', notificationData);
@@ -107,10 +104,4 @@ export const notificationService = {
   }
 };
 
-export default {
-  authService,
-  recommendationService,
-  clientService,
-  accessRequestService,
-  notificationService
-};
+export default api;
