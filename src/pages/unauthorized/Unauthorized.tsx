@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, ArrowLeft } from "lucide-react";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
@@ -22,7 +22,8 @@ const Unauthorized = () => {
           your administrator if you believe this is an error.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button onClick={handleGoBack}>
+          <Button onClick={handleGoBack} className="flex items-center">
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Go Back
           </Button>
           <Button variant="outline" asChild>

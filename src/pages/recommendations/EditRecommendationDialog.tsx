@@ -1,36 +1,53 @@
 
 import React from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { 
   Dialog, 
   DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
+  DialogDescription,
+  DialogFooter,
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { 
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  FormMessage
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { v4 as uuidv4 } from "uuid";
-import { loadClients, loadSubscriptions } from "@/utils/localStorage";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { loadClients } from "@/utils/localStorage";
+import { AlertOctagon, RefreshCw } from "lucide-react";
 
-interface EditRecommendationDialogProps {
+// Define schema for form validation
+const formSchema = z.object({
+  title: z.string().min(2, "Title must be at least 2 characters"),
+  description: z.string().min(2, "Description must be at least 2 characters"),
+  type: z.string().min(1, "Type is required"),
+  status: z.string().min(1, "Status is required"),
+  risk: z.string().min(1, "Risk level is required"),
+  clientsAssigned: z.array(z.string()).optional(),
+});
+
+type EditRecommendationDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   recommendation: any;
   onSubmit: (data: any) => void;
-}
+};
 
 const EditRecommendationDialog = ({
   open,
@@ -39,128 +56,43 @@ const EditRecommendationDialog = ({
   onSubmit,
 }: EditRecommendationDialogProps) => {
   const clients = loadClients();
-  const subscriptions = loadSubscriptions();
   
   const form = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       title: recommendation?.title || "",
-      type: recommendation?.type || "Stock",
       description: recommendation?.description || "",
-      targetPrice1: recommendation?.targets?.[0]?.price || "",
-      targetTimeframe1: recommendation?.targets?.[0]?.timeframe || "Short-term",
-      targetPrice2: recommendation?.targets?.[1]?.price || "",
-      targetTimeframe2: recommendation?.targets?.[1]?.timeframe || "Medium-term",
-      targetPrice3: recommendation?.targets?.[2]?.price || "",
-      targetTimeframe3: recommendation?.targets?.[2]?.timeframe || "Long-term",
-      subscriptionIds: recommendation?.subscriptionIds || ["default"],
+      type: recommendation?.type || "",
+      status: recommendation?.status || "",
+      risk: recommendation?.risk || "",
       clientsAssigned: recommendation?.clientsAssigned || [],
     },
   });
 
-  const handleFormSubmit = (data: any) => {
-    // Build targets array
-    const targets = [];
-    
-    if (data.targetPrice1) {
-      targets.push({
-        id: recommendation?.targets?.[0]?.id || uuidv4(),
-        price: parseFloat(data.targetPrice1),
-        timeframe: data.targetTimeframe1
-      });
-    }
-    
-    if (data.targetPrice2) {
-      targets.push({
-        id: recommendation?.targets?.[1]?.id || uuidv4(),
-        price: parseFloat(data.targetPrice2),
-        timeframe: data.targetTimeframe2
-      });
-    }
-    
-    if (data.targetPrice3) {
-      targets.push({
-        id: recommendation?.targets?.[2]?.id || uuidv4(),
-        price: parseFloat(data.targetPrice3),
-        timeframe: data.targetTimeframe3
-      });
-    }
-
-    // Calculate which clients to assign based on selected subscriptions
-    let clientsAssigned: string[] = [];
-    
-    if (data.subscriptionIds && data.subscriptionIds.length > 0) {
-      // Get clients who have any of these subscription IDs
-      clientsAssigned = clients
-        .filter(client => client.subscriptionId && data.subscriptionIds.includes(client.subscriptionId))
-        .map(client => client.id);
-    }
-
-    // If also individually selecting clients, add them
-    if (data.clientsAssigned && data.clientsAssigned.length > 0) {
-      data.clientsAssigned.forEach((clientId: string) => {
-        if (!clientsAssigned.includes(clientId)) {
-          clientsAssigned.push(clientId);
-        }
-      });
-    }
-    
-    onSubmit({
-      title: data.title,
-      type: data.type,
-      description: data.description,
-      targets,
-      subscriptionIds: data.subscriptionIds,
-      clientsAssigned,
-    });
+  const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
+    onSubmit(data);
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Recommendation</DialogTitle>
           <DialogDescription>
             Update the details of this investment recommendation.
           </DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Recommendation Title</FormLabel>
+                  <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter title" {...field} />
+                    <Input {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Stock">Stock</SelectItem>
-                      <SelectItem value="Bond">Bond</SelectItem>
-                      <SelectItem value="ETF">ETF</SelectItem>
-                      <SelectItem value="Mutual Fund">Mutual Fund</SelectItem>
-                      <SelectItem value="Crypto">Cryptocurrency</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -173,170 +105,146 @@ const EditRecommendationDialog = ({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter description and rationale" 
-                      className="min-h-[100px]" 
-                      {...field} 
-                    />
+                    <Textarea {...field} rows={4} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="space-y-4">
-              <h3 className="font-medium">Price Targets</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="targetPrice1"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 1 Price</FormLabel>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="₹" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        <SelectItem value="Stock">Stock</SelectItem>
+                        <SelectItem value="Bond">Bond</SelectItem>
+                        <SelectItem value="Mutual Fund">Mutual Fund</SelectItem>
+                        <SelectItem value="ETF">ETF</SelectItem>
+                        <SelectItem value="Real Estate">Real Estate</SelectItem>
+                        <SelectItem value="Commodity">Commodity</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="targetTimeframe1"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 1 Timeframe</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select timeframe" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Short-term">Short-term</SelectItem>
-                          <SelectItem value="Medium-term">Medium-term</SelectItem>
-                          <SelectItem value="Long-term">Long-term</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="targetPrice2"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 2 Price (Optional)</FormLabel>
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="₹" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="targetTimeframe2"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 2 Timeframe</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select timeframe" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Short-term">Short-term</SelectItem>
-                          <SelectItem value="Medium-term">Medium-term</SelectItem>
-                          <SelectItem value="Long-term">Long-term</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="targetPrice3"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 3 Price (Optional)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="₹" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="targetTimeframe3"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target 3 Timeframe</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select timeframe" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Short-term">Short-term</SelectItem>
-                          <SelectItem value="Medium-term">Medium-term</SelectItem>
-                          <SelectItem value="Long-term">Long-term</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="Expired">Expired</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
               control={form.control}
-              name="subscriptionIds"
+              name="risk"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to subscription groups</FormLabel>
+                  <FormLabel>Risk Level</FormLabel>
                   <Select 
-                    onValueChange={(value) => field.onChange([value])}
-                    defaultValue={field.value?.[0]}
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select subscription" />
+                        <SelectValue placeholder="Select risk level" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {subscriptions.map((sub: any) => (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="Low">Low Risk</SelectItem>
+                      <SelectItem value="Medium">Medium Risk</SelectItem>
+                      <SelectItem value="High">High Risk</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    All clients in this subscription group will see this recommendation
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <DialogFooter className="flex justify-between items-center pt-4">
+            <FormField
+              control={form.control}
+              name="clientsAssigned"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assign to Clients</FormLabel>
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md">
+                    {clients.length === 0 && (
+                      <div className="w-full text-center py-2 text-muted-foreground flex items-center justify-center">
+                        <AlertOctagon className="w-4 h-4 mr-2" />
+                        No clients available
+                      </div>
+                    )}
+                    {clients.map((client) => (
+                      <div key={client.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`client-${client.id}`}
+                          className="mr-2"
+                          checked={(field.value || []).includes(client.id)}
+                          onChange={(e) => {
+                            const updatedClients = e.target.checked
+                              ? [...(field.value || []), client.id]
+                              : (field.value || []).filter((id) => id !== client.id);
+                            field.onChange(updatedClients);
+                          }}
+                        />
+                        <label
+                          htmlFor={`client-${client.id}`}
+                          className="text-sm mr-4"
+                        >
+                          {client.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Update Recommendation</Button>
+              <Button type="submit" className="flex items-center">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Update Recommendation
+              </Button>
             </DialogFooter>
           </form>
         </Form>

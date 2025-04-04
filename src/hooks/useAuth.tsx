@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { 
   loadUsers, saveUsers, saveCurrentUser, loadCurrentUser, 
   clearCurrentUser, loadAccessRequests, saveAccessRequests,
-  loadClients
+  loadClients, loadRecommendations, saveRecommendations
 } from "@/utils/localStorage";
 
 interface User {
@@ -40,6 +40,7 @@ interface AuthContextType {
   rejectAccessRequest: (requestId: string) => void;
   getPendingRequests: () => AccessRequest[];
   updateUserProfile: (userId: string, userData: Partial<User>) => void;
+  refreshData: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -57,6 +58,7 @@ const AuthContext = createContext<AuthContextType>({
   rejectAccessRequest: () => {},
   getPendingRequests: () => [],
   updateUserProfile: () => {},
+  refreshData: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -64,19 +66,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(loadAccessRequests());
 
+  // Function to refresh all data from storage
+  const refreshData = () => {
+    const storedUser = loadCurrentUser();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+    setAccessRequests(loadAccessRequests());
+  };
+
   // Refresh data on tab focus to ensure synced state
   useEffect(() => {
     const handleTabFocus = () => {
-      const storedUser = loadCurrentUser();
-      if (storedUser) {
-        setUser(storedUser);
+      refreshData();
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key && (event.key.startsWith('persistentUser_') || 
+          event.key === 'users' || 
+          event.key === 'accessRequests' ||
+          event.key === 'recommendations' ||
+          event.key === 'clients')) {
+        refreshData();
       }
-      setAccessRequests(loadAccessRequests());
     };
 
     window.addEventListener('focus', handleTabFocus);
+    window.addEventListener('storage', handleStorageChange);
+    
     return () => {
       window.removeEventListener('focus', handleTabFocus);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -135,7 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         toast.error("User with this email already exists");
       } else {
         const newUser = {
-          id: String(users.length + 1),
+          id: String(Date.now()), // Use timestamp for better uniqueness
           name,
           email,
           password,
@@ -151,6 +171,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         saveCurrentUser(userWithoutPassword);
         
         toast.success("Registration successful!");
+        
+        // Force storage event for other tabs
+        localStorage.setItem('lastUserRegistered', Date.now().toString());
       }
     } catch (error) {
       toast.error("Registration failed. Please try again.");
@@ -345,7 +368,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       approveAccessRequest,
       rejectAccessRequest,
       getPendingRequests,
-      updateUserProfile
+      updateUserProfile,
+      refreshData
     }}>
       {children}
     </AuthContext.Provider>

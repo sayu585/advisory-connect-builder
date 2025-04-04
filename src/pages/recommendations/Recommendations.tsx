@@ -26,9 +26,11 @@ import RecommendationDetails from "./RecommendationDetails";
 import EditRecommendationDialog from "./EditRecommendationDialog";
 import { loadRecommendations, saveRecommendations, deleteRecommendation as deleteRecommendationFromStorage } from "@/utils/localStorage";
 import { toast } from "sonner";
+import { useLocation } from "react-router-dom";
 
 const Recommendations = () => {
-  const { user } = useAuth();
+  const { user, refreshData } = useAuth();
+  const location = useLocation();
   const isAdmin = user?.role === "admin";
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -37,11 +39,31 @@ const Recommendations = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Load recommendations from localStorage on component mount
-  useEffect(() => {
+  // Load recommendations from localStorage on component mount and focus
+  const loadRecommendationsData = () => {
     const loadedRecommendations = loadRecommendations();
     setRecommendations(loadedRecommendations);
-  }, []);
+  };
+
+  useEffect(() => {
+    loadRecommendationsData();
+    
+    // Add event listeners for tab focus and storage changes
+    const handleFocus = () => loadRecommendationsData();
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'recommendations') {
+        loadRecommendationsData();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.pathname]);
 
   // Filter recommendations for client view
   // For clients, show all recommendations but only detailed info for assigned ones
@@ -57,6 +79,9 @@ const Recommendations = () => {
     saveRecommendations(updatedRecommendations);
     setIsAddDialogOpen(false);
     toast.success("Recommendation added successfully");
+    
+    // Trigger storage event for other tabs
+    localStorage.setItem('lastRecommendationUpdate', Date.now().toString());
   };
 
   const handleViewRecommendation = (recommendation: any) => {
@@ -86,6 +111,9 @@ const Recommendations = () => {
     saveRecommendations(updatedRecommendations);
     setIsEditDialogOpen(false);
     toast.success("Recommendation updated successfully");
+    
+    // Trigger storage event for other tabs
+    localStorage.setItem('lastRecommendationUpdate', Date.now().toString());
   };
 
   const handleDeleteClick = (recommendation: any) => {
@@ -102,6 +130,9 @@ const Recommendations = () => {
       setIsDeleteDialogOpen(false);
       setSelectedRecommendation(null);
       toast.success("Recommendation deleted successfully");
+      
+      // Trigger storage event for other tabs
+      localStorage.setItem('lastRecommendationUpdate', Date.now().toString());
     }
   };
 
@@ -109,10 +140,10 @@ const Recommendations = () => {
     if (!user) return;
 
     const updatedRecommendations = recommendations.map(rec => {
-      if (rec.id === recommendationId && !rec.clientsAcknowledged.includes(user.id)) {
+      if (rec.id === recommendationId && !rec.clientsAcknowledged?.includes(user.id)) {
         return {
           ...rec,
-          clientsAcknowledged: [...rec.clientsAcknowledged, user.id],
+          clientsAcknowledged: [...(rec.clientsAcknowledged || []), user.id],
         };
       }
       return rec;
@@ -121,6 +152,9 @@ const Recommendations = () => {
     setRecommendations(updatedRecommendations);
     saveRecommendations(updatedRecommendations);
     toast.success("Recommendation acknowledged");
+    
+    // Trigger storage event for other tabs
+    localStorage.setItem('lastRecommendationUpdate', Date.now().toString());
   };
 
   // Determine if a client is assigned to view full details

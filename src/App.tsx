@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
 // Auth components
@@ -21,6 +21,7 @@ import Unauthorized from "./pages/unauthorized/Unauthorized";
 import AdminManagement from "./pages/admin/AdminManagement";
 import SubscriptionManagement from "./pages/subscriptions/SubscriptionManagement";
 import { useAuth } from "./hooks/useAuth";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,7 +35,13 @@ const queryClient = new QueryClient({
 
 // This component handles protected routes and redirects
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshData } = useAuth();
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Refresh data on route change
+    refreshData();
+  }, [location.pathname, refreshData]);
   
   if (isLoading) {
     return (
@@ -53,7 +60,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // This component handles main admin only routes
 const MainAdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isMainAdmin, isLoading } = useAuth();
+  const { isMainAdmin, isLoading, refreshData } = useAuth();
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Refresh data on route change
+    refreshData();
+  }, [location.pathname, refreshData]);
   
   if (isLoading) {
     return (
@@ -71,7 +84,20 @@ const MainAdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { user } = useAuth();
+  const { user, refreshData } = useAuth();
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Refresh data on route change or tab focus
+    refreshData();
+    
+    const handleFocus = () => refreshData();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [location.pathname, refreshData]);
   
   return (
     <Routes>
@@ -86,18 +112,22 @@ const AppRoutes = () => {
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Protected routes */}
-      <Route element={<MainLayout />}>
+      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* Admin routes */}
-      <Route element={<MainLayout allowedRoles={["admin"]} />}>
+      <Route element={<ProtectedRoute><MainLayout allowedRoles={["admin"]} /></ProtectedRoute>}>
         <Route path="/clients" element={<Clients />} />
         <Route path="/subscriptions" element={<SubscriptionManagement />} />
         <Route path="/admin/users" element={<div>User Management (Admin Only)</div>} />
-        <Route path="/admin/management" element={<AdminManagement />} />
+        <Route path="/admin/management" element={
+          <MainAdminRoute>
+            <AdminManagement />
+          </MainAdminRoute>
+        } />
       </Route>
 
       {/* Catch-all route */}
