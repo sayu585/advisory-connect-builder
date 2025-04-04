@@ -1,4 +1,8 @@
 
+import React, { useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
+import { toast } from 'sonner';
+
 // Component to listen for new user registrations and show notifications
 const UserRegistrationListener = () => {
   const { user } = useAuth();
@@ -35,3 +39,15 @@ const UserRegistrationListener = () => {
   
   return null;
 };
+
+// Main App component
+const App = () => {
+  return (
+    <div>
+      <UserRegistrationListener />
+      {/* Rest of your application */}
+    </div>
+  );
+};
+
+export default App;
