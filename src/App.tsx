@@ -41,6 +41,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Refresh data on route change
     refreshData();
+
+    // Set up an interval to refresh data every 3 seconds
+    const refreshInterval = setInterval(() => {
+      refreshData();
+    }, 3000);
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [location.pathname, refreshData]);
   
   if (isLoading) {
@@ -58,7 +67,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// This component handles main admin only routes
+// This component handles main admin only routes with more frequent refreshes
 const MainAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isMainAdmin, isLoading, refreshData } = useAuth();
   const location = useLocation();
@@ -66,6 +75,15 @@ const MainAdminRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Refresh data on route change
     refreshData();
+
+    // Set up more frequent interval for admin routes to ensure latest data
+    const refreshInterval = setInterval(() => {
+      refreshData();
+    }, 2000);
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [location.pathname, refreshData]);
   
   if (isLoading) {
@@ -94,8 +112,14 @@ const AppRoutes = () => {
     const handleFocus = () => refreshData();
     window.addEventListener('focus', handleFocus);
     
+    // Also periodically refresh data in the background
+    const refreshInterval = setInterval(() => {
+      refreshData();
+    }, 5000);
+    
     return () => {
       window.removeEventListener('focus', handleFocus);
+      clearInterval(refreshInterval);
     };
   }, [location.pathname, refreshData]);
   

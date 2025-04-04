@@ -82,11 +82,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key && (event.key.startsWith('persistentUser_') || 
+      if (event.key && (
+          event.key.startsWith('persistentUser_') || 
           event.key === 'users' || 
           event.key === 'accessRequests' ||
           event.key === 'recommendations' ||
-          event.key === 'clients')) {
+          event.key === 'clients' ||
+          event.key === 'lastUserRegistered' ||
+          event.key === 'userRegistration'
+      )) {
         refreshData();
       }
     };
@@ -172,8 +176,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         toast.success("Registration successful!");
         
-        // Force storage event for other tabs
-        localStorage.setItem('lastUserRegistered', Date.now().toString());
+        // Force storage event for other tabs with explicit event data
+        localStorage.setItem('userRegistration', JSON.stringify({
+          timestamp: Date.now(),
+          userId: newUser.id,
+          action: 'register'
+        }));
       }
     } catch (error) {
       toast.error("Registration failed. Please try again.");
