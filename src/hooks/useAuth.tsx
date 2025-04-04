@@ -164,7 +164,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email,
           password,
           role,
-          isMainAdmin: false
+          isMainAdmin: false,
+          createdAt: new Date().toISOString()
         };
         
         users.push(newUser);
@@ -180,7 +181,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('userRegistration', JSON.stringify({
           timestamp: Date.now(),
           userId: newUser.id,
-          action: 'register'
+          action: 'register',
+          userName: name,
+          email: email,
+          role: role
         }));
       }
     } catch (error) {
