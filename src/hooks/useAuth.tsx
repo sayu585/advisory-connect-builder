@@ -1,11 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "sonner";
-import { 
-  loadUsers, saveUsers, saveCurrentUser, loadCurrentUser, 
-  clearCurrentUser, loadAccessRequests, saveAccessRequests,
-  loadClients, loadRecommendations, saveRecommendations
-} from "@/utils/localStorage";
+import { authService, accessRequestService } from "@/services/api";
 
 interface User {
   id: string;
@@ -64,82 +60,59 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(loadAccessRequests());
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
 
-  // Function to refresh all data from storage
-  const refreshData = () => {
-    const storedUser = loadCurrentUser();
-    if (storedUser) {
-      setUser(storedUser);
+  // Function to refresh all data from server
+  const refreshData = async () => {
+    try {
+      // Load access requests
+      const fetchedRequests = await accessRequestService.getAll();
+      setAccessRequests(fetchedRequests);
+      
+      // Load clients
+      const { clientService } = await import('@/services/api');
+      const fetchedClients = await clientService.getAll();
+      setClients(fetchedClients);
+
+    } catch (error) {
+      console.error("Error refreshing data:", error);
     }
-    setAccessRequests(loadAccessRequests());
   };
 
-  // Refresh data on tab focus to ensure synced state
   useEffect(() => {
-    const handleTabFocus = () => {
-      refreshData();
-    };
-
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key && (
-          event.key.startsWith('persistentUser_') || 
-          event.key === 'users' || 
-          event.key === 'accessRequests' ||
-          event.key === 'recommendations' ||
-          event.key === 'clients' ||
-          event.key === 'lastUserRegistered' ||
-          event.key === 'userRegistration'
-      )) {
-        refreshData();
-      }
-    };
-
-    window.addEventListener('focus', handleTabFocus);
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('focus', handleTabFocus);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    saveAccessRequests(accessRequests);
-  }, [accessRequests]);
-
-  useEffect(() => {
-    const storedUser = loadCurrentUser();
+    // Check if user is already logged in (stored in sessionStorage)
+    const storedUser = sessionStorage.getItem('currentUser');
     if (storedUser) {
-      setUser(storedUser);
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
+      }
     }
-    setIsLoading(false);
+    
+    refreshData().finally(() => setIsLoading(false));
   }, []);
 
   const login = async (email: string, password: string, rememberMe: boolean) => {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const loggedInUser = await authService.login(email, password);
       
-      const users = loadUsers();
-      const foundUser = users.find(u => u.email === email && u.password === password);
+      // Store user in session storage
+      sessionStorage.setItem('currentUser', JSON.stringify(loggedInUser));
       
-      if (foundUser) {
-        const { password, ...userWithoutPassword } = foundUser;
-        // Add timestamp for tracking most recent login
-        const userWithTimestamp = {
-          ...userWithoutPassword,
-          lastLoginTime: Date.now()
-        };
-        setUser(userWithTimestamp);
-        saveCurrentUser(userWithTimestamp);
-        toast.success("Login successful!");
-      } else {
-        toast.error("Invalid email or password");
+      // If remember me is checked, store in local storage too
+      if (rememberMe) {
+        localStorage.setItem('persistentUser', JSON.stringify(loggedInUser));
       }
-    } catch (error) {
-      toast.error("Login failed. Please try again.");
+      
+      setUser(loggedInUser);
+      await refreshData();
+      toast.success("Login successful!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Login failed. Please try again.");
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);
@@ -150,45 +123,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const newUser = await authService.register({
+        name,
+        email,
+        password,
+        role,
+        isMainAdmin: false,
+        createdAt: new Date().toISOString()
+      });
       
-      const users = loadUsers();
-      const existingUser = users.find(u => u.email === email);
+      // Store user in session storage
+      sessionStorage.setItem('currentUser', JSON.stringify(newUser));
       
-      if (existingUser) {
-        toast.error("User with this email already exists");
-      } else {
-        const newUser = {
-          id: String(Date.now()), // Use timestamp for better uniqueness
-          name,
-          email,
-          password,
-          role,
-          isMainAdmin: false,
-          createdAt: new Date().toISOString()
-        };
-        
-        users.push(newUser);
-        saveUsers(users);
-        
-        const { password: _, ...userWithoutPassword } = newUser;
-        setUser(userWithoutPassword);
-        saveCurrentUser(userWithoutPassword);
-        
-        toast.success("Registration successful!");
-        
-        // Force storage event for other tabs with explicit event data
-        localStorage.setItem('userRegistration', JSON.stringify({
-          timestamp: Date.now(),
-          userId: newUser.id,
-          action: 'register',
-          userName: name,
-          email: email,
-          role: role
-        }));
+      setUser(newUser);
+      toast.success("Registration successful!");
+      
+      // Send notification about new user registration
+      try {
+        const { notificationService } = await import('@/services/api');
+        await notificationService.sendNotification({
+          type: 'userRegistration',
+          data: {
+            timestamp: Date.now(),
+            userId: newUser.id,
+            action: 'register',
+            userName: name,
+            email: email,
+            role: role
+          }
+        });
+      } catch (notifyError) {
+        console.error("Failed to send registration notification:", notifyError);
       }
-    } catch (error) {
-      toast.error("Registration failed. Please try again.");
+      
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Registration failed. Please try again.");
       console.error("Registration error:", error);
     } finally {
       setIsLoading(false);
@@ -204,30 +173,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await authService.register({
+        name,
+        email,
+        password,
+        role: "admin",
+        isMainAdmin: false
+      });
       
-      const users = loadUsers();
-      const existingUser = users.find(u => u.email === email);
-      
-      if (existingUser) {
-        toast.error("User with this email already exists");
-      } else {
-        const newUser = {
-          id: String(users.length + 1),
-          name,
-          email,
-          password,
-          role: "admin",
-          isMainAdmin: false
-        };
-        
-        users.push(newUser);
-        saveUsers(users);
-        
-        toast.success("Sub-admin created successfully!");
-      }
-    } catch (error) {
-      toast.error("Failed to create sub-admin. Please try again.");
+      toast.success("Sub-admin created successfully!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create sub-admin. Please try again.");
       console.error("Create sub-admin error:", error);
     } finally {
       setIsLoading(false);
@@ -239,7 +195,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const getClientOwnership = (clientId: string) => {
-    const clients = loadClients();
     const client = clients.find(c => c.id === clientId);
     return client ? client.ownerId : "";
   };
@@ -247,7 +202,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const hasAccessToClient = (clientId: string) => {
     if (isMainAdmin()) return true;
     
-    const clients = loadClients();
     const client = clients.find(c => c.id === clientId);
     if (client && user && client.ownerId === user.id) return true;
     
@@ -260,7 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return !!approvedRequest;
   };
 
-  const requestClientAccess = (clientId: string, clientName: string) => {
+  const requestClientAccess = async (clientId: string, clientName: string) => {
     if (!user) return;
     
     const existingRequest = accessRequests.find(
@@ -272,36 +226,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
     
-    const newRequest: AccessRequest = {
-      id: `req-${Date.now()}`,
-      requesterId: user.id,
-      requesterName: user.name,
-      clientId,
-      clientName,
-      status: "pending",
-      requestDate: new Date().toISOString()
-    };
-    
-    setAccessRequests(prev => [...prev, newRequest]);
-    toast.success("Access request submitted");
+    try {
+      const newRequest = await accessRequestService.create({
+        requesterId: user.id,
+        requesterName: user.name,
+        clientId,
+        clientName,
+        status: "pending"
+      });
+      
+      setAccessRequests(prev => [...prev, newRequest]);
+      toast.success("Access request submitted");
+    } catch (error) {
+      toast.error("Failed to submit access request");
+      console.error(error);
+    }
   };
 
-  const approveAccessRequest = (requestId: string) => {
-    setAccessRequests(prev => 
-      prev.map(req => 
-        req.id === requestId ? { ...req, status: "approved" } : req
-      )
-    );
-    toast.success("Access request approved");
+  const approveAccessRequest = async (requestId: string) => {
+    try {
+      const updatedRequest = await accessRequestService.update(requestId, { status: "approved" });
+      setAccessRequests(prev => 
+        prev.map(req => 
+          req.id === requestId ? updatedRequest : req
+        )
+      );
+      toast.success("Access request approved");
+    } catch (error) {
+      toast.error("Failed to approve request");
+      console.error(error);
+    }
   };
 
-  const rejectAccessRequest = (requestId: string) => {
-    setAccessRequests(prev => 
-      prev.map(req => 
-        req.id === requestId ? { ...req, status: "rejected" } : req
-      )
-    );
-    toast.info("Access request rejected");
+  const rejectAccessRequest = async (requestId: string) => {
+    try {
+      const updatedRequest = await accessRequestService.update(requestId, { status: "rejected" });
+      setAccessRequests(prev => 
+        prev.map(req => 
+          req.id === requestId ? updatedRequest : req
+        )
+      );
+      toast.info("Access request rejected");
+    } catch (error) {
+      toast.error("Failed to reject request");
+      console.error(error);
+    }
   };
 
   const getPendingRequests = () => {
@@ -311,7 +280,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (user && user.role === "admin") {
       return accessRequests.filter(req => {
-        const clients = loadClients();
         const client = clients.find(c => c.id === req.clientId);
         return req.status === "pending" && client && client.ownerId === user.id;
       });
@@ -321,47 +289,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
-    if (user) {
-      clearCurrentUser();
-    }
+    // Clear user session data
+    sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('persistentUser');
     setUser(null);
     toast.success("Logged out successfully");
   };
 
-  const updateUserProfile = (userId: string, userData: Partial<User>) => {
-    const users = loadUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-    
-    if (userIndex === -1) {
-      toast.error("User not found");
-      return;
-    }
-    
-    if (userData.email && userData.email !== users[userIndex].email) {
-      const emailExists = users.some(
-        (u, idx) => idx !== userIndex && u.email === userData.email
-      );
+  const updateUserProfile = async (userId: string, userData: Partial<User>) => {
+    try {
+      const updatedUser = await authService.updateUser(userId, userData);
       
-      if (emailExists) {
-        toast.error("Email already in use");
-        return;
+      if (user && user.id === userId) {
+        setUser(updatedUser);
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        if (localStorage.getItem('persistentUser')) {
+          localStorage.setItem('persistentUser', JSON.stringify(updatedUser));
+        }
+        toast.success("Profile updated successfully");
+      } else {
+        toast.success("User profile updated");
       }
-    }
-    
-    users[userIndex] = {
-      ...users[userIndex],
-      ...userData
-    };
-    
-    saveUsers(users);
-    
-    if (user && user.id === userId) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      saveCurrentUser(updatedUser);
-      toast.success("Profile updated successfully");
-    } else {
-      toast.success("User profile updated");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update profile");
+      console.error(error);
     }
   };
 

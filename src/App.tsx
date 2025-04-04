@@ -1,41 +1,17 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { toast } from 'sonner';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
 
-// Component to listen for new user registrations and show notifications
+// Component to fetch and display notifications
 const UserRegistrationListener = () => {
   const { user } = useAuth();
   
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      // Only show notifications for admins
-      if (!user || user.role !== 'admin') return;
-      
-      if (event.key === 'userRegistration' && event.newValue) {
-        try {
-          const data = JSON.parse(event.newValue);
-          if (data.action === 'register') {
-            toast.success(`New User Registration`, {
-              description: `${data.userName} (${data.email}) has registered as a ${data.role}`,
-              duration: 8000,
-              action: {
-                label: "View Users",
-                onClick: () => window.location.href = '/clients'
-              }
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing user registration data', error);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [user]);
+  // In a real app with websockets, you'd listen for real-time events here
+  // For now, we'll simulate by checking for new users periodically
   
   return null;
 };
@@ -43,10 +19,15 @@ const UserRegistrationListener = () => {
 // Main App component
 const App = () => {
   return (
-    <div>
+    <Router>
+      <Toaster position="top-right" />
       <UserRegistrationListener />
-      {/* Rest of your application */}
-    </div>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </Router>
   );
 };
 
